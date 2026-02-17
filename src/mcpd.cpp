@@ -69,6 +69,53 @@ void Server::addPrompt(const MCPPrompt& prompt) {
 void Server::setEndpoint(const char* path) { _endpoint = path; }
 void Server::setMDNS(bool enabled) { _mdnsEnabled = enabled; }
 
+bool Server::removeTool(const char* name) {
+    for (auto it = _tools.begin(); it != _tools.end(); ++it) {
+        if (it->name == name) {
+            _tools.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Server::removeResource(const char* uri) {
+    for (auto it = _resources.begin(); it != _resources.end(); ++it) {
+        if (it->uri == uri) {
+            _resources.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+void Server::notifyToolsChanged() {
+    JsonDocument doc;
+    doc["jsonrpc"] = "2.0";
+    doc["method"] = "notifications/tools/list_changed";
+    String output;
+    serializeJson(doc, output);
+    _pendingNotifications.push_back(output);
+}
+
+void Server::notifyResourcesChanged() {
+    JsonDocument doc;
+    doc["jsonrpc"] = "2.0";
+    doc["method"] = "notifications/resources/list_changed";
+    String output;
+    serializeJson(doc, output);
+    _pendingNotifications.push_back(output);
+}
+
+void Server::notifyPromptsChanged() {
+    JsonDocument doc;
+    doc["jsonrpc"] = "2.0";
+    doc["method"] = "notifications/prompts/list_changed";
+    String output;
+    serializeJson(doc, output);
+    _pendingNotifications.push_back(output);
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // Lifecycle
 // ════════════════════════════════════════════════════════════════════════
@@ -266,9 +313,12 @@ String Server::_dispatch(const char* method, JsonVariant params, JsonVariant id)
     if (m == "resources/templates/list") return _handleResourcesTemplatesList(params, id);
     if (m == "prompts/list")           return _handlePromptsList(params, id);
     if (m == "prompts/get")            return _handlePromptsGet(params, id);
+    if (m == "logging/setLevel")       return _handleLoggingSetLevel(params, id);
 
     // notifications/initialized — no response needed
     if (m == "notifications/initialized") return "";
+    // notifications/cancelled — acknowledge gracefully
+    if (m == "notifications/cancelled") return "";
 
     return _jsonRpcError(id, -32601, "Method not found");
 }
@@ -290,20 +340,26 @@ String Server::_handleInitialize(JsonVariant params, JsonVariant id) {
 
     JsonObject capabilities = result["capabilities"].to<JsonObject>();
 
-    // Advertise tools capability
+    // Advertise tools capability with listChanged support
     if (!_tools.empty()) {
-        capabilities["tools"].to<JsonObject>();
+        JsonObject toolsCap = capabilities["tools"].to<JsonObject>();
+        toolsCap["listChanged"] = true;
     }
 
-    // Advertise resources capability
+    // Advertise resources capability with listChanged support
     if (!_resources.empty() || !_resourceTemplates.empty()) {
-        capabilities["resources"].to<JsonObject>();
+        JsonObject resCap = capabilities["resources"].to<JsonObject>();
+        resCap["listChanged"] = true;
     }
 
-    // Advertise prompts capability
+    // Advertise prompts capability with listChanged support
     if (!_prompts.empty()) {
-        capabilities["prompts"].to<JsonObject>();
+        JsonObject promptsCap = capabilities["prompts"].to<JsonObject>();
+        promptsCap["listChanged"] = true;
     }
+
+    // Advertise logging capability
+    capabilities["logging"].to<JsonObject>();
 
     String resultStr;
     serializeJson(result, resultStr);
@@ -318,9 +374,22 @@ String Server::_handleToolsList(JsonVariant params, JsonVariant id) {
     JsonDocument result;
     JsonArray tools = result["tools"].to<JsonArray>();
 
-    for (const auto& tool : _tools) {
+    // Cursor-based pagination
+    size_t startIdx = 0;
+    if (!params.isNull() && params["cursor"].is<const char*>()) {
+        startIdx = (size_t)atoi(params["cursor"].as<const char*>());
+    }
+
+    size_t endIdx = _tools.size();
+    if (_pageSize > 0 && (startIdx + _pageSize) < endIdx) {
+        endIdx = startIdx + _pageSize;
+        // Set nextCursor
+        result["nextCursor"] = String(endIdx);
+    }
+
+    for (size_t i = startIdx; i < endIdx; i++) {
         JsonObject obj = tools.add<JsonObject>();
-        tool.toJson(obj);
+        _tools[i].toJson(obj);
     }
 
     String resultStr;
@@ -373,9 +442,20 @@ String Server::_handleResourcesList(JsonVariant params, JsonVariant id) {
     JsonDocument result;
     JsonArray resources = result["resources"].to<JsonArray>();
 
-    for (const auto& res : _resources) {
+    size_t startIdx = 0;
+    if (!params.isNull() && params["cursor"].is<const char*>()) {
+        startIdx = (size_t)atoi(params["cursor"].as<const char*>());
+    }
+
+    size_t endIdx = _resources.size();
+    if (_pageSize > 0 && (startIdx + _pageSize) < endIdx) {
+        endIdx = startIdx + _pageSize;
+        result["nextCursor"] = String(endIdx);
+    }
+
+    for (size_t i = startIdx; i < endIdx; i++) {
         JsonObject obj = resources.add<JsonObject>();
-        res.toJson(obj);
+        _resources[i].toJson(obj);
     }
 
     String resultStr;
@@ -432,9 +512,20 @@ String Server::_handleResourcesTemplatesList(JsonVariant params, JsonVariant id)
     JsonDocument result;
     JsonArray templates = result["resourceTemplates"].to<JsonArray>();
 
-    for (const auto& tmpl : _resourceTemplates) {
+    size_t startIdx = 0;
+    if (!params.isNull() && params["cursor"].is<const char*>()) {
+        startIdx = (size_t)atoi(params["cursor"].as<const char*>());
+    }
+
+    size_t endIdx = _resourceTemplates.size();
+    if (_pageSize > 0 && (startIdx + _pageSize) < endIdx) {
+        endIdx = startIdx + _pageSize;
+        result["nextCursor"] = String(endIdx);
+    }
+
+    for (size_t i = startIdx; i < endIdx; i++) {
         JsonObject obj = templates.add<JsonObject>();
-        tmpl.toJson(obj);
+        _resourceTemplates[i].toJson(obj);
     }
 
     String resultStr;
@@ -446,9 +537,20 @@ String Server::_handlePromptsList(JsonVariant params, JsonVariant id) {
     JsonDocument result;
     JsonArray prompts = result["prompts"].to<JsonArray>();
 
-    for (const auto& prompt : _prompts) {
+    size_t startIdx = 0;
+    if (!params.isNull() && params["cursor"].is<const char*>()) {
+        startIdx = (size_t)atoi(params["cursor"].as<const char*>());
+    }
+
+    size_t endIdx = _prompts.size();
+    if (_pageSize > 0 && (startIdx + _pageSize) < endIdx) {
+        endIdx = startIdx + _pageSize;
+        result["nextCursor"] = String(endIdx);
+    }
+
+    for (size_t i = startIdx; i < endIdx; i++) {
         JsonObject obj = prompts.add<JsonObject>();
-        prompt.toJson(obj);
+        _prompts[i].toJson(obj);
     }
 
     String resultStr;
@@ -502,6 +604,18 @@ String Server::_handlePromptsGet(JsonVariant params, JsonVariant id) {
 
     return _jsonRpcError(id, -32602,
         (String("Prompt not found: ") + promptName).c_str());
+}
+
+String Server::_handleLoggingSetLevel(JsonVariant params, JsonVariant id) {
+    const char* level = params["level"];
+    if (!level) {
+        return _jsonRpcError(id, -32602, "Missing level parameter");
+    }
+
+    _logging.setLevel(logLevelFromString(level));
+    Serial.printf("[mcpd] Log level set to: %s\n", level);
+
+    return _jsonRpcResult(id, "{}");
 }
 
 // ════════════════════════════════════════════════════════════════════════

@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-02-18
+
+### Added
+- **Logging capability** (`MCPLogging.h`) — MCP `logging/setLevel` support
+  - 8 log levels (debug through emergency, per RFC 5424)
+  - Client-controlled log filtering via `logging/setLevel` method
+  - Log notification sink for sending `notifications/message` to clients
+  - Convenience methods: `debug()`, `info()`, `warning()`, `error()`, `critical()`
+  - Automatic Serial output for local debugging
+- **Cursor-based pagination** for all list methods
+  - `tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`
+  - Configurable page size via `setPageSize()` (0 = disabled)
+  - `nextCursor` in response for fetching next page
+- **Dynamic tool/resource management** at runtime
+  - `removeTool(name)` and `removeResource(uri)` methods
+  - `notifyToolsChanged()`, `notifyResourcesChanged()`, `notifyPromptsChanged()` — emit `notifications/*/list_changed`
+  - `listChanged: true` advertised in capabilities
+- **`notifications/cancelled` handling** — graceful acknowledgment
+- New example: `smart_greenhouse` — greenhouse automation with logging, dynamic tools, prompts
+- 11 new unit tests (37 unit + 15 HTTP = 52 total)
+
+### Changed
+- Bumped version to 0.3.0
+- Capabilities now advertise `listChanged: true` for tools, resources, and prompts
+- Logging capability advertised in `initialize` response
+
 ## [0.2.0] - 2026-02-17
 
 ### Added

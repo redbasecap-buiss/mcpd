@@ -261,6 +261,49 @@ mcp.addPrompt("diagnose_sensor",
 
 Clients call `prompts/list` to discover available prompts and `prompts/get` to retrieve them with arguments filled in.
 
+### 📝 Logging
+
+MCP-native logging — clients control the log level, server sends structured log notifications:
+
+```cpp
+#include <mcpd.h>
+
+mcpd::Server mcp("my-device");
+
+void setup() {
+    // ... WiFi + tools setup ...
+    mcp.begin();
+
+    // Log at various levels — only messages >= client's level are sent
+    mcp.logging().info("sensors", "Temperature sensor initialized");
+    mcp.logging().warning("battery", "Battery below 20%");
+    mcp.logging().error("network", "MQTT connection failed");
+}
+```
+
+Clients call `logging/setLevel` to control verbosity (debug → emergency). Log messages arrive as `notifications/message`.
+
+### 📄 Pagination
+
+For devices with many tools/resources, enable cursor-based pagination:
+
+```cpp
+mcp.setPageSize(5);  // 5 items per page
+// Clients receive nextCursor in response to fetch more
+```
+
+### 🔄 Dynamic Tools
+
+Add or remove tools at runtime (e.g., when peripherals are connected/disconnected):
+
+```cpp
+mcp.addTool("new_sensor", "Read new sensor", schema, handler);
+mcp.notifyToolsChanged();  // Notify connected clients
+
+mcp.removeTool("old_sensor");
+mcp.notifyToolsChanged();
+```
+
 ### 📊 Prometheus Metrics
 
 Monitor your device with `/metrics` endpoint:
@@ -324,6 +367,7 @@ For full API documentation, see [docs/API.md](docs/API.md).
 | [`weather_station`](examples/weather_station/) | Temperature, humidity, pressure as MCP resources | ESP32 + DHT22 + BMP280 |
 | [`mqtt_bridge`](examples/mqtt_bridge/) | MQTT pub/sub bridge — AI talks to IoT | ESP32 + MQTT broker |
 | [`robot_arm`](examples/robot_arm/) | Claude controls a 4-DOF servo robot arm | ESP32 + 4× servos |
+| [`smart_greenhouse`](examples/smart_greenhouse/) | Greenhouse automation with logging & dynamic tools | ESP32 + DHT22 + relays |
 
 ## Supported Platforms
 
@@ -351,6 +395,10 @@ Implements [MCP specification 2025-03-26](https://modelcontextprotocol.io/specif
 - ✅ `prompts/list` and `prompts/get`
 - ✅ Batch request support
 - ✅ CORS headers for browser clients
+- ✅ `logging/setLevel` and `notifications/message` (logging capability)
+- ✅ Cursor-based pagination for list methods
+- ✅ `notifications/*/list_changed` (dynamic tool/resource/prompt changes)
+- ✅ `notifications/cancelled` handling
 
 ## Native Testing
 
@@ -360,7 +408,7 @@ Test on macOS/Linux **without any hardware**:
 make test
 ```
 
-- **26 unit tests** — JSON-RPC parsing, dispatch, error handling, batch requests, prompts
+- **37 unit tests** — JSON-RPC parsing, dispatch, error handling, batch requests, prompts, logging, pagination
 - **15 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server
 
 ## Roadmap

@@ -290,6 +290,137 @@ TEST(prompts_get_not_found) {
     ASSERT_STR_CONTAINS(resp.c_str(), "Prompt not found");
 }
 
+// ── Logging tests ──────────────────────────────────────────────────────
+
+TEST(logging_set_level) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":40,"method":"logging/setLevel","params":{"level":"debug"}})";
+    String resp = s->_processJsonRpc(req);
+
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"result\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"id\":40");
+}
+
+TEST(logging_set_level_missing_param) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":41,"method":"logging/setLevel","params":{}})";
+    String resp = s->_processJsonRpc(req);
+
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"error\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Missing level");
+}
+
+TEST(initialize_advertises_logging_capability) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"logging\"");
+}
+
+TEST(initialize_advertises_list_changed) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"listChanged\":true");
+}
+
+// ── Pagination tests ──────────────────────────────────────────────────
+
+TEST(tools_list_pagination) {
+    auto* s = makeTestServer();
+    s->setPageSize(1);  // Only 1 tool per page
+
+    // First page
+    String req1 = R"({"jsonrpc":"2.0","id":50,"method":"tools/list","params":{}})";
+    String resp1 = s->_processJsonRpc(req1);
+    ASSERT_STR_CONTAINS(resp1.c_str(), "\"nextCursor\"");
+    ASSERT_STR_CONTAINS(resp1.c_str(), "\"echo\"");
+
+    // Second page
+    String req2 = R"({"jsonrpc":"2.0","id":51,"method":"tools/list","params":{"cursor":"1"}})";
+    String resp2 = s->_processJsonRpc(req2);
+    ASSERT_STR_CONTAINS(resp2.c_str(), "\"add\"");
+
+    s->setPageSize(0);  // Reset
+}
+
+TEST(tools_list_no_pagination_when_disabled) {
+    auto* s = makeTestServer();
+    // pageSize=0 (default) means no pagination
+    String req = R"({"jsonrpc":"2.0","id":52,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+
+    // Should contain both tools and no nextCursor
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"echo\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"add\"");
+    ASSERT(strstr(resp.c_str(), "nextCursor") == nullptr);
+}
+
+// ── Dynamic tool management tests ─────────────────────────────────────
+
+TEST(remove_tool) {
+    auto* s = makeTestServer();
+
+    // Verify tool exists
+    String req1 = R"({"jsonrpc":"2.0","id":60,"method":"tools/call","params":{"name":"echo","arguments":{"message":"hi"}}})";
+    String resp1 = s->_processJsonRpc(req1);
+    ASSERT_STR_CONTAINS(resp1.c_str(), "\"result\"");
+
+    // Remove it
+    bool removed = s->removeTool("echo");
+    ASSERT(removed);
+
+    // Verify it's gone
+    String req2 = R"({"jsonrpc":"2.0","id":61,"method":"tools/call","params":{"name":"echo","arguments":{"message":"hi"}}})";
+    String resp2 = s->_processJsonRpc(req2);
+    ASSERT_STR_CONTAINS(resp2.c_str(), "Tool not found");
+}
+
+TEST(remove_nonexistent_tool) {
+    auto* s = makeTestServer();
+    bool removed = s->removeTool("nonexistent");
+    ASSERT(!removed);
+}
+
+// ── Notification handling tests ────────────────────────────────────────
+
+TEST(notifications_cancelled_returns_empty) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"123"}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_EQ(resp.length(), (size_t)0);
+}
+
+// ── Logging unit tests ────────────────────────────────────────────────
+
+TEST(log_level_conversion) {
+    ASSERT(strcmp(mcpd::logLevelToString(mcpd::LogLevel::DEBUG), "debug") == 0);
+    ASSERT(strcmp(mcpd::logLevelToString(mcpd::LogLevel::ERROR), "error") == 0);
+    ASSERT(strcmp(mcpd::logLevelToString(mcpd::LogLevel::EMERGENCY), "emergency") == 0);
+
+    ASSERT(mcpd::logLevelFromString("debug") == mcpd::LogLevel::DEBUG);
+    ASSERT(mcpd::logLevelFromString("error") == mcpd::LogLevel::ERROR);
+    ASSERT(mcpd::logLevelFromString("bogus") == mcpd::LogLevel::INFO);
+    ASSERT(mcpd::logLevelFromString(nullptr) == mcpd::LogLevel::INFO);
+}
+
+TEST(logging_filters_by_level) {
+    mcpd::Logging log;
+    log.setLevel(mcpd::LogLevel::WARNING);
+
+    int received = 0;
+    log.setSink([&](const String&) { received++; });
+
+    log.debug("test", "should be filtered");
+    log.info("test", "should be filtered");
+    log.warning("test", "should pass");
+    log.error("test", "should pass");
+
+    ASSERT_EQ(received, 2);
+}
+
 TEST(empty_body_parse_error) {
     auto* s = makeTestServer();
     String req = "";

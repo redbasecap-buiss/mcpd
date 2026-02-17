@@ -383,6 +383,10 @@ make test
 - [x] Prompts support
 - [ ] mTLS authentication
 
+## Testing
+
+For host-side testing without hardware, see [**esp32emu**](https://github.com/redbasecap-buiss/esp32emu) — a lightweight ESP32/Arduino emulator with real network sockets.
+
 ## License
 
 [MIT](LICENSE) — Nicola Spieser

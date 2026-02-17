@@ -1,6 +1,6 @@
-<![CDATA[<div align="center">
+<div align="center">
 
-# mcpd
+# ⚡ mcpd
 
 **MCP Server SDK for Microcontrollers**
 
@@ -11,12 +11,18 @@ Expose ESP32/RP2040 hardware as AI-accessible tools via [Model Context Protocol]
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-orange.svg)](https://platformio.org)
 [![Arduino](https://img.shields.io/badge/Arduino-compatible-teal.svg)](https://www.arduino.cc)
 [![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple.svg)](https://modelcontextprotocol.io)
+[![Works with Claude Desktop](https://img.shields.io/badge/Works%20with-Claude%20Desktop-cc785c.svg)](https://claude.ai/download)
 
 </div>
 
+<!-- TODO: Replace with actual GIF of Claude controlling hardware via mcpd -->
+<!-- ![mcpd demo](docs/demo.gif) -->
+
 ---
 
-**mcpd** turns your microcontroller into a standards-compliant MCP server. Claude Desktop, Cursor, or any MCP client can discover and interact with your hardware — read sensors, toggle GPIOs, publish MQTT messages — using the same protocol they use for any other tool.
+**mcpd** turns your microcontroller into a standards-compliant MCP server. Claude Desktop, Cursor, or any MCP client can discover and interact with your hardware — read sensors, toggle GPIOs, control servos — using the same protocol they use for any other tool.
+
+> 💡 **30-second pitch:** Flash an ESP32, connect to WiFi, and Claude can read your temperature sensor. No cloud. No custom API. Just MCP.
 
 ## Why mcpd?
 
@@ -25,10 +31,14 @@ Expose ESP32/RP2040 hardware as AI-accessible tools via [Model Context Protocol]
 | Runs on the MCU | ✅ | ✅ | ❌ (CLI tool) |
 | MCP spec compliant | ✅ (2025-03-26) | ❌ (custom WebSocket) | ❌ |
 | Compiles | ✅ | ❌ (self-described) | N/A |
-| Streamable HTTP transport | ✅ | ❌ | ❌ |
+| Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
 | mDNS discovery | ✅ | ❌ | ❌ |
-| Built-in tools (GPIO, I2C, MQTT…) | ✅ | ❌ | ❌ |
+| Built-in tools (GPIO, I2C, Servo…) | ✅ | ❌ | ❌ |
+| Authentication | ✅ | ❌ | ❌ |
+| OTA Updates | ✅ | ❌ | ❌ |
+| Prometheus Metrics | ✅ | ❌ | ❌ |
+| Captive Portal Setup | ✅ | ❌ | ❌ |
 | Multi-platform (ESP32, RP2040) | ✅ | ESP32 only | ESP32 only |
 
 ## Architecture
@@ -51,12 +61,13 @@ Expose ESP32/RP2040 hardware as AI-accessible tools via [Model Context Protocol]
                                  │    │  └────┘ └────┘      │  │
                                  │    └─────────────────────┘  │
                                  │    mDNS: _mcp._tcp          │
+                                 │    /metrics (Prometheus)    │
                                  └─────────────────────────────┘
 ```
 
 ## Quick Start
 
-### 1. Install the library
+### 1. Install
 
 **PlatformIO** (recommended):
 ```ini
@@ -70,27 +81,26 @@ lib_deps =
     bblanchon/ArduinoJson@^7
 ```
 
-**Arduino IDE**: Download this repository as ZIP → Sketch → Include Library → Add .ZIP Library
+**Arduino IDE**: Download as ZIP → Sketch → Include Library → Add .ZIP Library
 
-### 2. Write your firmware
+### 2. Minimal Firmware (5 minutes)
 
 ```cpp
 #include <mcpd.h>
 
-mcpd::Server mcp("my-sensor-hub");
+mcpd::Server mcp("my-device");
 
 void setup() {
     Serial.begin(115200);
     WiFi.begin("MySSID", "MyPassword");
     while (WiFi.status() != WL_CONNECTED) delay(500);
 
-    // Register a custom tool
-    mcp.addTool("read_temperature", "Read the DS18B20 temperature sensor", R"({
+    mcp.addTool("read_temperature", "Read the temperature sensor", R"({
         "type": "object",
         "properties": {}
     })", [](const JsonObject& params) -> String {
-        float temp = readDS18B20(); // your function
-        return String("{\"temperature\":") + temp + "}";
+        float temp = analogRead(34) * 0.1; // your sensor logic
+        return String("{\"temperature_c\":") + temp + "}";
     });
 
     mcp.begin();
@@ -102,21 +112,165 @@ void loop() {
 }
 ```
 
-### 3. Connect to Claude Desktop
+### 3. Connect Claude Desktop
+
+Add to your `claude_desktop_config.json`:
 
 ```jsonc
-// claude_desktop_config.json
 {
   "mcpServers": {
-    "my-sensor-hub": {
+    "my-device": {
       "command": "python3",
-      "args": ["/path/to/mcpd/host/mcpd_bridge.py", "--host", "my-sensor-hub.local"]
+      "args": ["/path/to/mcpd/host/mcpd_bridge.py", "--host", "my-device.local"]
     }
   }
 }
 ```
 
 The bridge discovers your MCU via mDNS and translates stdio ↔ Streamable HTTP.
+
+### 4. Talk to your hardware!
+
+> **You:** "What's the temperature?"
+>
+> **Claude:** *calls `read_temperature`* → "The sensor reads 23.5°C"
+
+<!-- TODO: Screenshot of Claude Desktop using mcpd tool -->
+<!-- ![Claude Desktop screenshot](docs/claude-desktop-screenshot.png) -->
+
+## Features
+
+### 🔐 Authentication
+
+Protect your MCP server with API key authentication:
+
+```cpp
+#include <mcpd.h>
+#include <MCPAuth.h>
+
+mcpd::Server mcp("my-device");
+mcpd::Auth auth;
+
+void setup() {
+    // ...WiFi setup...
+    auth.setApiKey("your-secret-key-here");
+    // Auth integrates with the server — see examples for full setup
+    mcp.begin();
+}
+```
+
+Supports Bearer tokens, `X-API-Key` header, and `?key=` query parameter.
+
+### 📡 SSE Transport
+
+Server-Sent Events for streaming responses (MCP Streamable HTTP spec):
+
+```cpp
+#include <MCPTransportSSE.h>
+
+mcpd::SSEManager sse;
+// Clients connect via GET /mcp with Accept: text/event-stream
+// Server pushes events in real-time
+```
+
+### 📶 Captive Portal Setup
+
+No hardcoded WiFi credentials — configure via captive portal:
+
+```cpp
+#include <MCPConfig.h>
+
+mcpd::Config config;
+
+void setup() {
+    if (!config.load()) {
+        // First boot: start WiFi setup portal
+        config.startCaptivePortal("mcpd-setup");
+    }
+    config.connectWiFi();
+}
+```
+
+Connect to the `mcpd-setup` WiFi network and a setup page opens automatically.
+
+### 🔄 OTA Updates
+
+Update firmware over WiFi — no USB cable needed:
+
+```cpp
+#include <MCPOTA.h>
+
+mcpd::OTA ota;
+
+void setup() {
+    // ...WiFi setup...
+    ota.begin("my-device");
+}
+
+void loop() {
+    ota.loop();  // handles OTA in background
+    mcp.loop();
+}
+```
+
+Then: `pio run -t upload --upload-port my-device.local`
+
+### 📊 Prometheus Metrics
+
+Monitor your device with `/metrics` endpoint:
+
+```cpp
+#include <MCPMetrics.h>
+
+mcpd::Metrics metrics;
+// After server starts:
+// metrics.begin(httpServer);
+```
+
+Exposes: `mcpd_uptime_seconds`, `mcpd_free_heap_bytes`, `mcpd_requests_total`, `mcpd_request_latency_ms_avg`, `mcpd_wifi_rssi_dbm`, and more.
+
+```bash
+curl http://my-device.local/metrics
+# mcpd_uptime_seconds 3421
+# mcpd_free_heap_bytes 142680
+# mcpd_requests_total 847
+# mcpd_wifi_rssi_dbm -42
+```
+
+## Built-in Tools
+
+mcpd ships with optional built-in tools:
+
+| Tool | Functions | Library Required |
+|------|-----------|-----------------|
+| **GPIO** | `digital_read`, `digital_write`, `analog_read`, `pin_mode` | — |
+| **PWM** | `pwm_write`, `pwm_stop` | — |
+| **Servo** | `servo_write`, `servo_detach` | ESP32Servo |
+| **NeoPixel** | `neopixel_set`, `neopixel_fill`, `neopixel_clear` | Adafruit NeoPixel |
+| **DHT** | `dht_read` (temperature & humidity) | DHT |
+| **WiFi** | `wifi_status`, `wifi_scan` | — |
+| **I2C** | `i2c_scan`, `i2c_read`, `i2c_write` | — |
+| **System** | `system_info` (heap, uptime, chip) | — |
+
+```cpp
+#include <tools/MCPGPIOTool.h>
+#include <tools/MCPSystemTool.h>
+
+mcpd::tools::GPIOTool::attach(mcp);
+mcpd::tools::SystemTool::attach(mcp);
+```
+
+For full API documentation, see [docs/API.md](docs/API.md).
+
+## Examples
+
+| Example | Description | Hardware |
+|---------|-------------|----------|
+| [`basic_server`](examples/basic_server/) | Minimal MCP server with one custom tool | ESP32 only |
+| [`sensor_hub`](examples/sensor_hub/) | Multi-sensor setup with resources | ESP32 + sensors |
+| [`home_automation`](examples/home_automation/) | GPIO + MQTT home automation | ESP32 + relays |
+| [`weather_station`](examples/weather_station/) | Temperature, humidity, pressure as MCP resources | ESP32 + DHT22 + BMP280 |
+| [`robot_arm`](examples/robot_arm/) | Claude controls a 4-DOF servo robot arm | ESP32 + 4× servos |
 
 ## Supported Hardware
 
@@ -126,39 +280,9 @@ The bridge discovers your MCU via mDNS and translates stdio ↔ Streamable HTTP.
 | RP2040 (Pico W) | 🔜 Planned | WiFi via CYW43 |
 | STM32 + Ethernet | 🔜 Planned | Requires Ethernet shield |
 
-## Built-in Tools
-
-mcpd ships with optional built-in tools you can enable:
-
-- **GPIO** — `digital_read`, `digital_write`, `analog_read`, `pin_mode`
-- **PWM** — `pwm_write`, `pwm_stop` (hardware PWM via LEDC)
-- **Servo** — `servo_write`, `servo_detach` (hobby servo control)
-- **NeoPixel** — `neopixel_set`, `neopixel_fill`, `neopixel_clear`, `neopixel_brightness` (requires Adafruit NeoPixel library)
-- **DHT Sensor** — `dht_read` (temperature & humidity, requires DHT library)
-- **WiFi Info** — `wifi_status`, `wifi_scan`
-- **I2C** — `i2c_scan`, `i2c_read`, `i2c_write`
-- **System** — `system_info` (free heap, uptime, chip model)
-
-For full API documentation, see [docs/API.md](docs/API.md).
-
-```cpp
-#include <mcpd.h>
-#include <tools/MCPGPIOTool.h>
-#include <tools/MCPSystemTool.h>
-
-mcpd::Server mcp("my-board");
-
-void setup() {
-    // ...WiFi setup...
-    mcpd::tools::GPIOTool::attach(mcp);
-    mcpd::tools::SystemTool::attach(mcp);
-    mcp.begin();
-}
-```
-
 ## MCP Compliance
 
-mcpd implements the [MCP specification 2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26):
+Implements [MCP specification 2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26):
 
 - ✅ JSON-RPC 2.0 message format
 - ✅ `initialize` / `initialized` lifecycle
@@ -168,48 +292,37 @@ mcpd implements the [MCP specification 2025-03-26](https://modelcontextprotocol.
 - ✅ Streamable HTTP transport (POST + SSE)
 - ✅ Session management (`Mcp-Session-Id`)
 - ✅ mDNS service advertisement (`_mcp._tcp`)
+- ✅ Batch request support
+- ✅ CORS headers for browser clients
+
+## Native Testing
+
+Test on macOS/Linux **without any hardware**:
+
+```bash
+make test
+```
+
+- **20 unit tests** — JSON-RPC parsing, dispatch, error handling, batch requests
+- **15 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server
 
 ## Roadmap
 
 - [x] Core MCP server with Streamable HTTP
-- [x] Built-in GPIO, System, WiFi tools
+- [x] Built-in GPIO, PWM, Servo, NeoPixel, DHT, I2C, System tools
 - [x] Host bridge (Python stdio ↔ HTTP)
 - [x] mDNS discovery
-- [ ] Built-in I2C/SPI tools
-- [ ] Built-in MQTT tool
-- [ ] Resources: live sensor readings as MCP resources
+- [x] SSE transport
+- [x] Authentication (API key / Bearer token)
+- [x] Configuration persistence (NVS + Captive Portal)
+- [x] OTA updates
+- [x] Prometheus metrics
 - [ ] RP2040 (Pico W) support
-- [ ] OTA updates via MCP tool
-- [ ] WebSocket transport option
-- [ ] Authentication (API key / mTLS)
+- [ ] Built-in MQTT tool
 - [ ] Prompts support
-
-## Native Testing
-
-mcpd can be compiled and tested on macOS/Linux **without any hardware**. The test harness includes Arduino API mocks and a real POSIX socket HTTP server, so tests send actual HTTP requests against the MCP server running on localhost.
-
-```bash
-# Run all tests (unit + HTTP integration)
-make test
-```
-
-**What gets tested:**
-- **20 unit tests** — JSON-RPC parsing, dispatch, error handling, batch requests
-- **15 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server: initialize, tools/list, tools/call, resources, sessions, CORS, batch, notifications
-
-**Test architecture:**
-- `test/arduino_mock.h` — Arduino API stubs (String, Serial, GPIO, WiFi, mDNS, I2C)
-- `test/mocks/` — Per-header mock files including EEPROM (RAM-backed)
-- `test/native/test_mcp_http.cpp` — HTTP integration tests with embedded POSIX socket server
-- `test/test_jsonrpc.cpp` — Unit tests calling JSON-RPC layer directly
-
-## Examples
-
-- [`basic_server`](examples/basic_server/) — Minimal MCP server with one custom tool
-- [`sensor_hub`](examples/sensor_hub/) — Multi-sensor setup with resources
-- [`home_automation`](examples/home_automation/) — GPIO + MQTT home automation
+- [ ] WebSocket transport
+- [ ] mTLS authentication
 
 ## License
 
 [MIT](LICENSE) — Nicola Spieser
-]]>

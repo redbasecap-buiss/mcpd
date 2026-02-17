@@ -130,9 +130,15 @@ The bridge discovers your MCU via mDNS and translates stdio ↔ Streamable HTTP.
 mcpd ships with optional built-in tools you can enable:
 
 - **GPIO** — `digital_read`, `digital_write`, `analog_read`, `pin_mode`
+- **PWM** — `pwm_write`, `pwm_stop` (hardware PWM via LEDC)
+- **Servo** — `servo_write`, `servo_detach` (hobby servo control)
+- **NeoPixel** — `neopixel_set`, `neopixel_fill`, `neopixel_clear`, `neopixel_brightness` (requires Adafruit NeoPixel library)
+- **DHT Sensor** — `dht_read` (temperature & humidity, requires DHT library)
 - **WiFi Info** — `wifi_status`, `wifi_scan`
-- **I2C Scanner** — `i2c_scan`, `i2c_read`, `i2c_write`
+- **I2C** — `i2c_scan`, `i2c_read`, `i2c_write`
 - **System** — `system_info` (free heap, uptime, chip model)
+
+For full API documentation, see [docs/API.md](docs/API.md).
 
 ```cpp
 #include <mcpd.h>

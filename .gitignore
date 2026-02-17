@@ -4,3 +4,7 @@ build/
 __pycache__
 *.pyc
 .DS_Store
+
+# Test artifacts
+test/test_jsonrpc
+test/ArduinoJson.h

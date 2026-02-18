@@ -17,7 +17,7 @@
 #define ARDUINOJSON_ENABLE_ARDUINO_PRINT 0
 #define ARDUINOJSON_ENABLE_STD_STRING 1
 #define ARDUINOJSON_ENABLE_STD_STREAM 0
-#include "../ArduinoJson.h"
+#include <ArduinoJson.h>
 
 // Override WebServer with POSIX socket version BEFORE mcpd.h
 // We need to prevent mcpd.h from including the mock WebServer

@@ -12,6 +12,7 @@
 #define MCPD_DHT_TOOL_H
 
 #include "../mcpd.h"
+#include <cmath>
 #include <DHT.h>
 
 namespace mcpd {
@@ -38,7 +39,7 @@ public:
 
                 JsonDocument doc;
 
-                if (isnan(humidity) || isnan(temperature)) {
+                if (std::isnan(humidity) || std::isnan(temperature)) {
                     doc["error"] = "Failed to read from DHT sensor";
                     doc["hint"] = "Check wiring and pull-up resistor";
                 } else {

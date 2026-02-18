@@ -39,7 +39,8 @@
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
 | mDNS discovery | ✅ | ❌ | ❌ |
 | Resource Templates (RFC 6570) | ✅ | ❌ | ❌ |
-| Built-in tools (GPIO, I2C, SPI, ADC, UART, MQTT…) | ✅ 12 tools | ❌ | ❌ |
+| Built-in tools (GPIO, I2C, SPI, ADC, UART, Power, Timer…) | ✅ 22 tools | ❌ | ❌ |
+| Tool Annotations (readOnly, destructive hints) | ✅ | ❌ | ❌ |
 | Prompts support | ✅ | ❌ | ❌ |
 | Authentication | ✅ | ❌ | ❌ |
 | OTA Updates | ✅ | ❌ | ❌ |
@@ -75,11 +76,12 @@
                    │  │          ┌───────────────┬┼──────┐   ││
                    │  │          ▼               ▼▼      ▼   ││
                    │  │  ┌─────────────┐ ┌──────────┐ ┌───┐ ││
-                   │  │  │Tools (12)   │ │Resources │ │Tpl│ ││
+                   │  │  │Tools (22)   │ │Resources │ │Tpl│ ││
                    │  │  │GPIO PWM I2C │ │Readings  │ │URI│ ││
                    │  │  │SPI ADC UART │ │Status    │ │   │ ││
                    │  │  │Servo DHT NP │ │Custom    │ │   │ ││
                    │  │  │WiFi Sys MQTT│ │          │ │   │ ││
+                   │  │  │Power Timer  │ │          │ │   │ ││
                    │  │  └─────────────┘ └──────────┘ └───┘ ││
                    │  └──────────────────────────────────────┘│
                    │  ┌──────────────────────────────────────┐│

@@ -28,7 +28,7 @@
 #include "MCPRoots.h"
 #include "MCPTransport.h"
 
-#define MCPD_VERSION "0.5.0"
+#define MCPD_VERSION "0.6.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {

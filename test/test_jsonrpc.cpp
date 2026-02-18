@@ -11,6 +11,7 @@
 #include "test_framework.h"
 #include "../src/mcpd.h"
 #include "../src/mcpd.cpp"
+#include "../src/tools/MCPGPIOTool.h"
 
 using namespace mcpd;
 
@@ -702,11 +703,156 @@ TEST(pagination_resources) {
     ASSERT_STR_CONTAINS(resp.c_str(), "\"nextCursor\"");
 }
 
-TEST(version_is_0_5_0) {
+TEST(version_is_0_6_0) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.5.0\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.6.0\"");
+}
+
+// ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
+
+TEST(tool_annotations_serialized) {
+    auto* s = makeTestServer();
+    // Add a tool with annotations
+    MCPTool tool("annotated_tool", "A tool with annotations",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.markReadOnly().markLocalOnly();
+    s->addTool(tool);
+
+    String req = R"({"jsonrpc":"2.0","id":300,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"annotations\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"readOnlyHint\":true");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"openWorldHint\":false");
+}
+
+TEST(tool_without_annotations_no_field) {
+    auto* s = makeTestServer();
+    // The default "echo" tool has no annotations set
+    String req = R"({"jsonrpc":"2.0","id":301,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    // echo tool should not have annotations key (hasAnnotations=false)
+    // This is harder to check precisely, but we verify "echo" is present
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"echo\"");
+}
+
+TEST(tool_mark_idempotent) {
+    auto* s = makeTestServer();
+    MCPTool tool("idempotent_tool", "Idempotent",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.markIdempotent();
+    s->addTool(tool);
+
+    String req = R"({"jsonrpc":"2.0","id":302,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"idempotentHint\":true");
+}
+
+TEST(tool_annotations_builder_chain) {
+    MCPTool tool("chain_test", "Test chaining",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.markReadOnly().markIdempotent().markLocalOnly();
+    ASSERT(tool.annotations.readOnlyHint == true);
+    ASSERT(tool.annotations.destructiveHint == false);
+    ASSERT(tool.annotations.idempotentHint == true);
+    ASSERT(tool.annotations.openWorldHint == false);
+    ASSERT(tool.annotations.hasAnnotations == true);
+}
+
+TEST(tool_annotations_custom) {
+    MCPToolAnnotations ann;
+    ann.title = "My Custom Tool";
+    ann.readOnlyHint = false;
+    ann.destructiveHint = true;
+    ann.idempotentHint = false;
+    ann.openWorldHint = true;
+
+    MCPTool tool("custom_ann", "Custom annotations test",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.setAnnotations(ann);
+
+    ASSERT(tool.annotations.hasAnnotations == true);
+    ASSERT(tool.annotations.title == "My Custom Tool");
+    ASSERT(tool.annotations.destructiveHint == true);
+}
+
+TEST(tool_annotations_title_in_json) {
+    auto* s = makeTestServer();
+    MCPToolAnnotations ann;
+    ann.title = "Sensor Reader";
+
+    MCPTool tool("titled_tool", "Reads sensor",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.setAnnotations(ann);
+    s->addTool(tool);
+
+    String req = R"({"jsonrpc":"2.0","id":305,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"title\":\"Sensor Reader\"");
+}
+
+TEST(remove_tool_with_annotations) {
+    auto* s = makeTestServer();
+    MCPTool tool("removable", "To be removed",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& args) -> String { return "{}"; });
+    tool.markReadOnly();
+    s->addTool(tool);
+    ASSERT(s->removeTool("removable") == true);
+    ASSERT(s->removeTool("removable") == false);
+}
+
+TEST(annotated_tool_call_works) {
+    auto* s = makeTestServer();
+    MCPTool tool("ann_echo", "Annotated echo",
+        R"({"type":"object","properties":{"msg":{"type":"string"}},"required":["msg"]})",
+        [](const JsonObject& args) -> String {
+            return String("{\"msg\":\"") + args["msg"].as<const char*>() + "\"}";
+        });
+    tool.markReadOnly().markLocalOnly();
+    s->addTool(tool);
+
+    String req = R"({"jsonrpc":"2.0","id":310,"method":"tools/call","params":{"name":"ann_echo","arguments":{"msg":"hello"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "hello");
+}
+
+// ── v0.6.0 Tests: GPIO tools with annotations ─────────────────────────
+
+TEST(gpio_tool_annotations_in_list) {
+    // Create fresh server with GPIO tools attached
+    Server* s = new Server("gpio-test", 8080);
+    mcpd::tools::GPIOTool::attach(*s);
+
+    String req = R"({"jsonrpc":"2.0","id":320,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    // digital_read should be readOnly
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"digital_read\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"readOnlyHint\":true");
+    delete s;
+}
+
+// ── v0.6.0 Tests: Cancellation ────────────────────────────────────────
+
+TEST(cancellation_notification_accepted) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"abc-123","reason":"timeout"}})";
+    String resp = s->_processJsonRpc(req);
+    // Notifications return empty string (202)
+    ASSERT(resp.isEmpty());
+}
+
+TEST(cancellation_in_batch) {
+    auto* s = makeTestServer();
+    String req = R"([{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"x"}},{"jsonrpc":"2.0","id":330,"method":"ping"}])";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"id\":330");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

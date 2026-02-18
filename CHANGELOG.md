@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-02-18
+
+### Added
+- **Tool Annotations** (MCP 2025-03-26 spec) — `MCPToolAnnotations` struct with hints:
+  - `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, `title`
+  - Builder-style API: `tool.markReadOnly()`, `tool.markIdempotent()`, `tool.markLocalOnly()`
+  - `tool.setAnnotations(ann)` for custom annotation objects
+  - Annotations serialized in `tools/list` responses when explicitly set
+- **Built-in Power Management Tool** (`MCPPowerTool.h`) — 5 tools for battery MCU projects:
+  - `power_info` — uptime, reset reason, free heap, CPU freq, chip info, wakeup cause
+  - `power_deep_sleep` — enter deep sleep with timer or ext pin wakeup
+  - `power_light_sleep` — enter light sleep, returns after waking
+  - `power_restart` — software reboot with configurable delay
+  - `power_watchdog` — enable/feed/disable task watchdog timer (TWDT)
+- **Built-in Timer Tool** (`MCPTimerTool.h`) — 5 tools for hardware timing:
+  - `timer_start` — start hardware timer (periodic or one-shot), fire count tracking
+  - `timer_stop` — stop timer, return total fires
+  - `timer_status` — read timer state and fire count
+  - `timer_millis` — precise millis/micros timestamps
+  - `timer_pulse_in` — measure pulse width (pulseIn), includes HC-SR04 distance calc
+- Added annotations to all GPIO built-in tools (digital_read=readOnly, digital_write=idempotent, etc.)
+- 11 new unit tests (73 unit + 15 HTTP = 88 total)
+
+### Changed
+- Bumped version to 0.6.0
+- Built-in tool count: 12 → 22 (added Power ×5, Timer ×5)
+- `MCPTool` struct now includes optional `annotations` field
+- Fixed raw string delimiter issue in GPIO tool schemas (`R"j(...)j"`)
+
 ## [0.5.0] - 2026-02-18
 
 ### Added

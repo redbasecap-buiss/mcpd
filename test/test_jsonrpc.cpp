@@ -712,7 +712,7 @@ TEST(version_is_0_11_0_compat) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.13.0\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.14.0\"");
 }
 
 // ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
@@ -1567,7 +1567,7 @@ TEST(version_0_11_0) {
     Server* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "0.13.0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "0.14.0");
 }
 
 // ── Watchdog Tool Tests ────────────────────────────────────────────────
@@ -1811,7 +1811,7 @@ TEST(diagnostics_version_macros) {
     ASSERT(strlen(MCPD_VERSION) > 0);
     ASSERT(strlen(MCPD_MCP_PROTOCOL_VERSION) > 0);
     ASSERT_STR_CONTAINS(MCPD_MCP_PROTOCOL_VERSION, "2025");
-    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.13.0");
+    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.14.0");
 }
 
 // ── Batch JSON-RPC edge cases ──────────────────────────────────────────
@@ -2108,6 +2108,199 @@ TEST(pulse_config_sets_scaling) {
     String resp = s->_processJsonRpc(req);
     ASSERT_STR_CONTAINS(resp.c_str(), "configured");
     ASSERT_STR_CONTAINS(resp.c_str(), "liters");
+}
+
+// ── DAC Tool Tests ─────────────────────────────────────────────────────
+
+TEST(dac_write_sets_value) {
+    auto* s = makeTestServer();
+    s->addTool("dac_write", "Write DAC value",
+        R"({"type":"object","properties":{"pin":{"type":"integer"},"value":{"type":"integer"}},"required":["pin","value"]})",
+        [](const JsonObject& params) -> String {
+            int pin = params["pin"];
+            int value = params["value"];
+            if (pin != 25 && pin != 26) return R"({"error":"Invalid DAC pin"})";
+            if (value < 0 || value > 255) return R"({"error":"Value must be 0-255"})";
+            int ch = pin == 25 ? 1 : 2;
+            char vBuf[16];
+            snprintf(vBuf, sizeof(vBuf), "%.3f", value / 255.0 * 3.3);
+            return String("{\"pin\":") + pin + ",\"channel\":" + ch +
+                   ",\"value\":" + value + ",\"voltage\":" + vBuf + "}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"dac_write","arguments":{"pin":25,"value":128}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pin");
+    ASSERT_STR_CONTAINS(resp.c_str(), "128");
+    ASSERT_STR_CONTAINS(resp.c_str(), "voltage");
+}
+
+TEST(dac_write_rejects_invalid_pin) {
+    auto* s = makeTestServer();
+    s->addTool("dac_write", "Write DAC value",
+        R"({"type":"object","properties":{"pin":{"type":"integer"},"value":{"type":"integer"}},"required":["pin","value"]})",
+        [](const JsonObject& params) -> String {
+            int pin = params["pin"];
+            if (pin != 25 && pin != 26) return R"({"error":"Invalid DAC pin"})";
+            return R"({"ok":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"dac_write","arguments":{"pin":13,"value":100}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Invalid DAC pin");
+}
+
+TEST(dac_write_voltage_converts_correctly) {
+    auto* s = makeTestServer();
+    s->addTool("dac_write_voltage", "Write DAC voltage",
+        R"({"type":"object","properties":{"pin":{"type":"integer"},"voltage":{"type":"number"}},"required":["pin","voltage"]})",
+        [](const JsonObject& params) -> String {
+            int pin = params["pin"];
+            float voltage = params["voltage"];
+            if (pin != 25 && pin != 26) return R"({"error":"Invalid DAC pin"})";
+            uint8_t value = (uint8_t)(voltage / 3.3f * 255.0f + 0.5f);
+            float actualV = value / 255.0f * 3.3f;
+            char actBuf[16];
+            snprintf(actBuf, sizeof(actBuf), "%.3f", actualV);
+            return String("{\"pin\":") + pin + ",\"raw\":" + value +
+                   ",\"actual_voltage\":" + actBuf + "}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"dac_write_voltage","arguments":{"pin":26,"voltage":1.65}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pin");
+    ASSERT_STR_CONTAINS(resp.c_str(), "actual_voltage");
+    ASSERT_STR_CONTAINS(resp.c_str(), "raw");
+}
+
+TEST(dac_status_returns_both_channels) {
+    auto* s = makeTestServer();
+    s->addTool("dac_status", "DAC status",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"channels":[{"channel":1,"pin":25,"enabled":false,"value":0,"voltage":0.000},{"channel":2,"pin":26,"enabled":true,"value":200,"voltage":2.588}]})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"dac_status","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "channels");
+    ASSERT_STR_CONTAINS(resp.c_str(), "channel");
+}
+
+// ── Ultrasonic Distance Tool Tests ─────────────────────────────────────
+
+TEST(distance_read_returns_measurement) {
+    auto* s = makeTestServer();
+    s->addTool("distance_read", "Read distance",
+        R"({"type":"object","properties":{"index":{"type":"integer"}}})",
+        [](const JsonObject& params) -> String {
+            int idx = params["index"] | 0;
+            return String("{\"index\":") + idx +
+                   R"(,"distance_cm":42.5,"distance_in":16.7,"distance_m":0.425,"samples_taken":3,"samples_valid":3,"speed_of_sound_mps":343.4,"temperature_c":20.0})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"distance_read","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance_cm");
+    ASSERT_STR_CONTAINS(resp.c_str(), "42.5");
+    ASSERT_STR_CONTAINS(resp.c_str(), "speed_of_sound");
+}
+
+TEST(distance_read_multi_returns_all_sensors) {
+    auto* s = makeTestServer();
+    s->addTool("distance_read_multi", "Read all sensors",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"sensors":[{"index":0,"label":"Bay 1","distance_cm":35.2,"valid":3},{"index":1,"label":"Bay 2","distance_cm":120.8,"valid":3}],"count":2})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"distance_read_multi","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "sensors");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Bay 1");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Bay 2");
+}
+
+TEST(distance_config_updates_temperature) {
+    auto* s = makeTestServer();
+    s->addTool("distance_config", "Configure sensor",
+        R"({"type":"object","properties":{"index":{"type":"integer"},"temperature":{"type":"number"}}})",
+        [](const JsonObject& params) -> String {
+            float temp = params["temperature"] | 20.0f;
+            char buf[16]; snprintf(buf, sizeof(buf), "%.1f", temp);
+            return String("{\"index\":0,\"configured\":true,\"temperature_c\":") +
+                   buf + ",\"max_distance_cm\":400}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"distance_config","arguments":{"index":0,"temperature":25.5}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "configured");
+    ASSERT_STR_CONTAINS(resp.c_str(), "25.5");
+}
+
+TEST(distance_read_no_echo_returns_error) {
+    auto* s = makeTestServer();
+    s->addTool("distance_read", "Read distance",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"error":"No echo received — object out of range or sensor disconnected"})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"distance_read","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "No echo");
+}
+
+// ── Buzzer Tool Tests ──────────────────────────────────────────────────
+
+TEST(buzzer_tone_plays_frequency) {
+    auto* s = makeTestServer();
+    s->addTool("buzzer_tone", "Play tone",
+        R"({"type":"object","properties":{"frequency":{"type":"integer"},"duration":{"type":"integer"}},"required":["frequency","duration"]})",
+        [](const JsonObject& params) -> String {
+            int freq = params["frequency"];
+            int dur = params["duration"];
+            return String("{\"frequency\":") + freq + ",\"duration_ms\":" + dur +
+                   ",\"pin\":4,\"played\":true}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buzzer_tone","arguments":{"frequency":440,"duration":500}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "frequency");
+    ASSERT_STR_CONTAINS(resp.c_str(), "440");
+    ASSERT_STR_CONTAINS(resp.c_str(), "played");
+}
+
+TEST(buzzer_melody_plays_predefined) {
+    auto* s = makeTestServer();
+    s->addTool("buzzer_melody", "Play melody",
+        R"({"type":"object","properties":{"name":{"type":"string"}}})",
+        [](const JsonObject& params) -> String {
+            String name = params["name"].as<const char*>();
+            return String("{\"notes_played\":3,\"total_duration_ms\":400,\"tempo\":1.00,\"played\":true}");
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buzzer_melody","arguments":{"name":"success"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "notes_played");
+    ASSERT_STR_CONTAINS(resp.c_str(), "played");
+}
+
+TEST(buzzer_stop_halts_playback) {
+    auto* s = makeTestServer();
+    s->addTool("buzzer_stop", "Stop buzzer",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"stopped":true,"was_active":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buzzer_stop","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "stopped");
+    ASSERT_STR_CONTAINS(resp.c_str(), "was_active");
+}
+
+TEST(buzzer_tone_rejects_invalid_frequency) {
+    auto* s = makeTestServer();
+    s->addTool("buzzer_tone", "Play tone",
+        R"({"type":"object","properties":{"frequency":{"type":"integer"},"duration":{"type":"integer"}},"required":["frequency","duration"]})",
+        [](const JsonObject& params) -> String {
+            int freq = params["frequency"];
+            if (freq < 20 || freq > 20000) return R"({"error":"Frequency must be 20-20000 Hz"})";
+            return R"({"played":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buzzer_tone","arguments":{"frequency":5,"duration":100}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Frequency must be");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

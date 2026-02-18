@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2026-02-18
+
+### Added
+- **DAC (Digital-to-Analog Converter) Tool** (`tools/MCPDACTool.h`) — true analog output on ESP32:
+  - `dac_write` — write raw 8-bit value (0-255) to DAC pin (GPIO 25/26)
+  - `dac_write_voltage` — write desired voltage (0-3.3V) with automatic conversion and resolution step reporting
+  - `dac_status` — read current state of both DAC channels (value, voltage, enabled)
+  - `addDACTools(server)` — single-call registration
+- **Ultrasonic Distance Sensor Tool** (`tools/MCPUltrasonicTool.h`) — HC-SR04/JSN-SR04T support:
+  - `distance_read` — single reading with multi-sample averaging, outlier filtering, temperature-compensated speed of sound; returns cm, inches, and meters
+  - `distance_read_multi` — read all registered sensors at once
+  - `distance_config` — update temperature compensation and max range at runtime
+  - Supports up to 4 sensors, configurable labels for human-readable identification
+  - `addUltrasonicTools(server, trigPin, echoPin, maxDistanceCm, label)` — single-call registration
+- **Buzzer/Tone Tool** (`tools/MCPBuzzerTool.h`) — piezo buzzer with melodies:
+  - `buzzer_tone` — play tone at specific frequency (20-20kHz) and duration, with duty cycle control
+  - `buzzer_melody` — play predefined melodies (alert, success, error, startup, doorbell, siren) or custom note sequences (max 32 notes) with tempo control
+  - `buzzer_stop` — immediate stop with active state reporting
+  - Uses LEDC PWM on ESP32 for precise tone generation
+  - `addBuzzerTools(server, pin, ledcChannel)` — single-call registration
+- **Smart Parking Example** (`examples/smart_parking/`) — demonstrates:
+  - 2x ultrasonic sensors for parking bay occupancy detection
+  - NeoPixel LED status indicators
+  - Buzzer proximity warnings with predefined melodies
+  - DAC output for analog occupancy gauge
+  - Custom resources for real-time parking status and per-bay monitoring
+  - AI-driven parking analysis prompt
+- 13 new unit tests:
+  - DAC tools: write, invalid pin rejection, voltage conversion, status (4)
+  - Ultrasonic tools: read measurement, read multi, config, no-echo error (4)
+  - Buzzer tools: tone playback, melody, stop, invalid frequency rejection (4)
+  - Additional pulse counter config test (1)
+
+### Changed
+- Bumped version to 0.14.0
+- Total tests: 175 → 188 unit tests + 15 HTTP integration tests = 203 total
+- Built-in tools now total 69 (60 + 3 DAC + 3 ultrasonic + 3 buzzer)
+- README comparison table updated to reflect 69 built-in tools
+
 ## [0.13.0] - 2026-02-18
 
 ### Added

@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-02-18
+
+### Added
+- **Built-in ADC Tool** (`MCPADCTool.h`) — advanced analog-to-digital converter tools
+  - `adc_read` — single pin reading with configurable sample averaging (1-64 samples), min/max stats
+  - `adc_read_voltage` — read and convert to voltage with configurable Vref and resolution
+  - `adc_read_multi` — read up to 8 analog pins in one call with averaging
+  - `adc_config` — ESP32-specific attenuation (0/2.5/6/11 dB) and resolution (9-12 bit) config
+- **Built-in UART Tool** (`MCPUARTTool.h`) — serial communication for peripherals
+  - `uart_config` — initialize Serial1/Serial2 with baud rate and optional pin remapping
+  - `uart_write` — send text or hex-encoded binary data with optional newline
+  - `uart_read` — read with timeout, max bytes limit, text or hex output mode
+  - `uart_available` — check bytes available in receive buffer
+- **Roots support** (`MCPRoots.h`) — MCP `roots/list` method
+  - `addRoot(uri, name)` for registering server context roots
+  - `roots` capability with `listChanged: true` in initialize
+  - Roots describe the server's data domains (e.g. `sensor://`, `gpio://`)
+- New example: `data_logger` — multi-channel ADC logging with UART peripherals,
+  ring buffer storage, configurable sampling, resources, roots, prompts, completions
+- 12 new unit tests (62 unit + 15 HTTP = 77 total)
+
+### Changed
+- Bumped version to 0.5.0
+- Built-in tool count: 10 → 12 (added ADC, UART)
+- library.json: added `ststm32` platform, updated description
+
 ## [0.4.0] - 2026-02-18
 
 ### Added

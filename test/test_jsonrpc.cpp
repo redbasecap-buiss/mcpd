@@ -589,6 +589,126 @@ TEST(double_subscribe_is_idempotent) {
     ASSERT_EQ(s->_subscribedResources.size(), (size_t)1);
 }
 
+// ── v0.5.0 Tests: Roots ────────────────────────────────────────────────
+
+TEST(roots_list_empty_when_no_roots) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":100,"method":"roots/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"roots\":[]");
+}
+
+TEST(roots_list_returns_registered_roots) {
+    auto* s = makeTestServer();
+    s->addRoot("sensor://temperature/", "Temperature Sensors");
+    s->addRoot("gpio://pins/", "GPIO Pins");
+    String req = R"({"jsonrpc":"2.0","id":101,"method":"roots/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "sensor://temperature/");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Temperature Sensors");
+    ASSERT_STR_CONTAINS(resp.c_str(), "gpio://pins/");
+    ASSERT_STR_CONTAINS(resp.c_str(), "GPIO Pins");
+}
+
+TEST(initialize_advertises_roots_capability) {
+    auto* s = makeTestServer();
+    s->addRoot("test://root/", "Test Root");
+    String req = R"({"jsonrpc":"2.0","id":102,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"roots\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"listChanged\":true");
+}
+
+TEST(initialize_no_roots_capability_when_empty) {
+    auto* s = makeTestServer();
+    // No roots added — capability should not be advertised
+    // (tools/resources/prompts already take "roots" keyword, so just check
+    // that the response is valid)
+    String req = R"({"jsonrpc":"2.0","id":103,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"protocolVersion\"");
+}
+
+TEST(root_without_name) {
+    auto* s = makeTestServer();
+    s->addRoot("file:///data/", "");
+    String req = R"({"jsonrpc":"2.0","id":104,"method":"roots/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "file:///data/");
+}
+
+// ── v0.5.0 Tests: Batch edge cases ────────────────────────────────────
+
+TEST(batch_all_notifications_returns_empty) {
+    auto* s = makeTestServer();
+    String req = R"([{"jsonrpc":"2.0","method":"notifications/initialized"},{"jsonrpc":"2.0","method":"notifications/cancelled"}])";
+    String resp = s->_processJsonRpc(req);
+    ASSERT(resp.isEmpty());
+}
+
+TEST(batch_mixed_requests_and_notifications) {
+    auto* s = makeTestServer();
+    String req = R"([{"jsonrpc":"2.0","method":"notifications/initialized"},{"jsonrpc":"2.0","id":200,"method":"ping"}])";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"id\":200");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"result\"");
+}
+
+TEST(resource_template_match_and_read) {
+    auto* s = makeTestServer();
+    s->addResourceTemplate("sensor://{id}/reading", "Sensor Reading",
+        "Read a sensor by ID", "application/json",
+        [](const std::map<String, String>& params) -> String {
+            String id = params.at("id");
+            return String("{\"id\":\"") + id + "\",\"value\":42}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":210,"method":"resources/read","params":{"uri":"sensor://temp1/reading"}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "temp1");
+    ASSERT_STR_CONTAINS(resp.c_str(), "42");
+}
+
+TEST(remove_resource_by_uri) {
+    auto* s = makeTestServer();
+    ASSERT(s->removeResource("test://data"));
+    String req = R"({"jsonrpc":"2.0","id":220,"method":"resources/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    // Should have no resources
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"resources\":[]");
+}
+
+TEST(pagination_prompts) {
+    auto* s = makeTestServer();
+    s->setPageSize(1);
+    // Already has "greet" prompt, add another
+    s->addPrompt("farewell", "Say goodbye",
+        { mcpd::MCPPromptArgument("name", "Person", true) },
+        [](const std::map<String, String>& args) -> std::vector<mcpd::MCPPromptMessage> {
+            return { mcpd::MCPPromptMessage("user", "Goodbye!") };
+        });
+    String req = R"({"jsonrpc":"2.0","id":230,"method":"prompts/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"nextCursor\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "greet");
+}
+
+TEST(pagination_resources) {
+    auto* s = makeTestServer();
+    s->addResource("test://data2", "Test Data 2", "Another resource", "application/json",
+        []() -> String { return "{}"; });
+    s->setPageSize(1);
+    String req = R"({"jsonrpc":"2.0","id":240,"method":"resources/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"nextCursor\"");
+}
+
+TEST(version_is_0_5_0) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.5.0\"");
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {

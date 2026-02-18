@@ -25,9 +25,10 @@
 #include "MCPPrompt.h"
 #include "MCPLogging.h"
 #include "MCPCompletion.h"
+#include "MCPRoots.h"
 #include "MCPTransport.h"
 
-#define MCPD_VERSION "0.4.0"
+#define MCPD_VERSION "0.5.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -97,6 +98,13 @@ public:
                    MCPPromptHandler handler);
 
     void addPrompt(const MCPPrompt& prompt);
+
+    // ── Root registration ──────────────────────────────────────────────
+
+    /**
+     * Register a root URI that describes the server's context.
+     */
+    void addRoot(const char* uri, const char* name = "");
 
     // ── Lifecycle ──────────────────────────────────────────────────────
 
@@ -194,6 +202,7 @@ private:
     std::vector<MCPResource> _resources;
     std::vector<MCPResourceTemplate> _resourceTemplates;
     std::vector<MCPPrompt> _prompts;
+    std::vector<MCPRoot> _roots;
 
     // Pending notifications to send
     std::vector<String> _pendingNotifications;
@@ -225,6 +234,7 @@ private:
     String _handleCompletionComplete(JsonVariant params, JsonVariant id);
     String _handleResourcesSubscribe(JsonVariant params, JsonVariant id);
     String _handleResourcesUnsubscribe(JsonVariant params, JsonVariant id);
+    String _handleRootsList(JsonVariant params, JsonVariant id);
 
     // ── Helpers ────────────────────────────────────────────────────────
 

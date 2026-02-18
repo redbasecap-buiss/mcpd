@@ -1,7 +1,7 @@
 {
   "name": "mcpd",
-  "version": "0.4.0",
-  "description": "MCP Server SDK for Microcontrollers — Expose ESP32/RP2040 hardware as AI-accessible tools via Model Context Protocol",
+  "version": "0.5.0",
+  "description": "MCP Server SDK for Microcontrollers — Expose ESP32/RP2040/STM32 hardware as AI-accessible tools via Model Context Protocol",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -32,7 +32,7 @@
   "license": "MIT",
   "homepage": "https://github.com/redbasecap-buiss/mcpd",
   "frameworks": ["arduino"],
-  "platforms": ["espressif32", "raspberrypi"],
+  "platforms": ["espressif32", "raspberrypi", "ststm32"],
   "dependencies": {
     "bblanchon/ArduinoJson": "^7.0.0"
   },

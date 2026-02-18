@@ -33,13 +33,13 @@
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
 | MCP spec compliant | ✅ 2025-03-26 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 65 tests | ❌ self-described | N/A |
+| Actually compiles | ✅ 77 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
 | mDNS discovery | ✅ | ❌ | ❌ |
 | Resource Templates (RFC 6570) | ✅ | ❌ | ❌ |
-| Built-in tools (GPIO, I2C, SPI, MQTT…) | ✅ 10 tools | ❌ | ❌ |
+| Built-in tools (GPIO, I2C, SPI, ADC, UART, MQTT…) | ✅ 12 tools | ❌ | ❌ |
 | Prompts support | ✅ | ❌ | ❌ |
 | Authentication | ✅ | ❌ | ❌ |
 | OTA Updates | ✅ | ❌ | ❌ |
@@ -48,6 +48,7 @@
 | Hardware Abstraction Layer | ✅ | ❌ | ❌ |
 | Resource Subscriptions | ✅ | ❌ | ❌ |
 | Completion/Autocomplete | ✅ | ❌ | ❌ |
+| Roots | ✅ | ❌ | ❌ |
 | Multi-platform (ESP32, RP2040, STM32) | ✅ | ESP32 only | ESP32 only |
 
 ## Architecture
@@ -74,10 +75,11 @@
                    │  │          ┌───────────────┬┼──────┐   ││
                    │  │          ▼               ▼▼      ▼   ││
                    │  │  ┌─────────────┐ ┌──────────┐ ┌───┐ ││
-                   │  │  │Tools (10)   │ │Resources │ │Tpl│ ││
+                   │  │  │Tools (12)   │ │Resources │ │Tpl│ ││
                    │  │  │GPIO PWM I2C │ │Readings  │ │URI│ ││
-                   │  │  │SPI Servo DHT│ │Status    │ │   │ ││
-                   │  │  │NP WiFi Sys  │ │Custom    │ │   │ ││
+                   │  │  │SPI ADC UART │ │Status    │ │   │ ││
+                   │  │  │Servo DHT NP │ │Custom    │ │   │ ││
+                   │  │  │WiFi Sys MQTT│ │          │ │   │ ││
                    │  │  └─────────────┘ └──────────┘ └───┘ ││
                    │  └──────────────────────────────────────┘│
                    │  ┌──────────────────────────────────────┐│

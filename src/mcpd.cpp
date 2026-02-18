@@ -62,6 +62,10 @@ void Server::addPrompt(const MCPPrompt& prompt) {
     _prompts.push_back(prompt);
 }
 
+void Server::addRoot(const char* uri, const char* name) {
+    _roots.emplace_back(uri, name);
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // Configuration
 // ════════════════════════════════════════════════════════════════════════
@@ -317,6 +321,7 @@ String Server::_dispatch(const char* method, JsonVariant params, JsonVariant id)
     if (m == "completion/complete")     return _handleCompletionComplete(params, id);
     if (m == "resources/subscribe")     return _handleResourcesSubscribe(params, id);
     if (m == "resources/unsubscribe")   return _handleResourcesUnsubscribe(params, id);
+    if (m == "roots/list")              return _handleRootsList(params, id);
 
     // notifications/initialized — no response needed
     if (m == "notifications/initialized") return "";
@@ -360,6 +365,12 @@ String Server::_handleInitialize(JsonVariant params, JsonVariant id) {
     if (!_prompts.empty()) {
         JsonObject promptsCap = capabilities["prompts"].to<JsonObject>();
         promptsCap["listChanged"] = true;
+    }
+
+    // Advertise roots capability if roots are registered
+    if (!_roots.empty()) {
+        JsonObject rootsCap = capabilities["roots"].to<JsonObject>();
+        rootsCap["listChanged"] = true;
     }
 
     // Advertise logging capability
@@ -736,6 +747,20 @@ void Server::notifyResourceUpdated(const char* uri) {
     String output;
     serializeJson(doc, output);
     _pendingNotifications.push_back(output);
+}
+
+String Server::_handleRootsList(JsonVariant params, JsonVariant id) {
+    JsonDocument result;
+    JsonArray roots = result["roots"].to<JsonArray>();
+
+    for (const auto& root : _roots) {
+        JsonObject obj = roots.add<JsonObject>();
+        root.toJson(obj);
+    }
+
+    String resultStr;
+    serializeJson(result, resultStr);
+    return _jsonRpcResult(id, resultStr);
 }
 
 // ════════════════════════════════════════════════════════════════════════

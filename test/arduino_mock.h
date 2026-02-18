@@ -215,6 +215,26 @@ struct WiFiMock {
 };
 inline WiFiMock WiFi;
 
+// ── WiFiClient Mock ────────────────────────────────────────────────────
+
+class WiFiClient {
+public:
+    bool connected() const { return _connected; }
+    size_t print(const String& s) { _buffer += s; return s.length(); }
+    size_t println(const String& s) { _buffer += s + "\n"; return s.length() + 1; }
+    size_t println() { _buffer += "\n"; return 1; }
+    void flush() {}
+    void stop() { _connected = false; }
+
+    // Test helpers
+    String getBuffer() const { return _buffer; }
+    void setConnected(bool c) { _connected = c; }
+
+private:
+    bool _connected = true;
+    String _buffer;
+};
+
 // ── WebServer Mock ─────────────────────────────────────────────────────
 
 #define HTTP_POST   1
@@ -249,6 +269,8 @@ public:
     void begin() {}
     void stop() {}
     void handleClient() {}
+
+    WiFiClient client() { return WiFiClient(); }
 
     void collectHeaders(const char** headers, int count) {}
 

@@ -175,6 +175,28 @@ void Server::loop() {
     if (_httpServer) {
         _httpServer->handleClient();
     }
+
+    // Manage SSE connections (keepalive, prune)
+    _sseManager.loop();
+
+    // Send any pending notifications via SSE
+    if (_sseManager.hasClients(_sessionId) && !_pendingNotifications.empty()) {
+        for (const auto& notif : _pendingNotifications) {
+            _sseManager.broadcast(_sessionId, notif);
+        }
+        _pendingNotifications.clear();
+    }
+
+    // Send any pending sampling requests via SSE
+    auto outgoing = _samplingManager.drainOutgoing();
+    for (const auto& msg : outgoing) {
+        if (_sseManager.hasClients(_sessionId)) {
+            _sseManager.broadcast(_sessionId, msg);
+        }
+    }
+
+    // Prune expired sampling requests
+    _samplingManager.pruneExpired();
 }
 
 void Server::stop() {
@@ -229,10 +251,33 @@ void Server::_handleMCPPost() {
 
 void Server::_handleMCPGet() {
     transport::setCORSHeaders(*_httpServer);
-    // GET endpoint for SSE stream — not yet implemented (returns 405)
-    // For basic servers, POST-only is sufficient per spec
-    _httpServer->send(405, transport::CONTENT_TYPE_JSON,
-                      _jsonRpcError(JsonVariant(), -32601, "SSE stream not supported yet"));
+
+    // Check that the client wants SSE
+    // Note: on ESP32 WebServer, we need to take over the client socket
+    if (!_initialized || _sessionId.isEmpty()) {
+        _httpServer->send(400, transport::CONTENT_TYPE_JSON,
+                          _jsonRpcError(JsonVariant(), -32600, "Not initialized — call initialize first"));
+        return;
+    }
+
+    // Validate session ID
+    String clientSession = _httpServer->header(transport::HEADER_SESSION_ID);
+    if (clientSession.length() > 0 && clientSession != _sessionId) {
+        _httpServer->send(404, transport::CONTENT_TYPE_JSON,
+                          _jsonRpcError(JsonVariant(), -32600, "Invalid session"));
+        return;
+    }
+
+    // Take over the raw client socket for SSE
+    WiFiClient client = _httpServer->client();
+    if (_sseManager.addClient(client, _sessionId, _endpoint)) {
+        Serial.println("[mcpd] SSE stream opened");
+        // Prevent WebServer from sending its own response
+        // (addClient already sent headers)
+    } else {
+        _httpServer->send(503, transport::CONTENT_TYPE_JSON,
+                          _jsonRpcError(JsonVariant(), -32000, "Too many SSE connections"));
+    }
 }
 
 void Server::_handleMCPDelete() {
@@ -296,6 +341,16 @@ String Server::_processJsonRpc(const String& body) {
     const char* version = doc["jsonrpc"];
     if (!version || strcmp(version, "2.0") != 0) {
         return _jsonRpcError(id, -32600, "Invalid Request: missing or wrong jsonrpc version");
+    }
+
+    // Check if this is a response to a server-initiated request (e.g., sampling)
+    if (!method && !id.isNull() && !doc["result"].isNull()) {
+        int respId = id.as<int>();
+        JsonObject result = doc["result"].as<JsonObject>();
+        if (_samplingManager.handleResponse(respId, result)) {
+            Serial.printf("[mcpd] Sampling response received (id: %d)\n", respId);
+        }
+        return "";  // No response needed for responses
     }
 
     if (!method) {
@@ -394,6 +449,9 @@ String Server::_handleInitialize(JsonVariant params, JsonVariant id) {
 
     // Advertise logging capability
     capabilities["logging"].to<JsonObject>();
+
+    // Advertise sampling capability (server can request LLM inference from client)
+    capabilities["sampling"].to<JsonObject>();
 
     // Advertise completion capability if providers are registered
     if (_completions.hasProviders()) {
@@ -839,6 +897,18 @@ String Server::_handleRootsList(JsonVariant params, JsonVariant id) {
 // ════════════════════════════════════════════════════════════════════════
 // Progress Notifications
 // ════════════════════════════════════════════════════════════════════════
+
+int Server::requestSampling(const MCPSamplingRequest& request, MCPSamplingCallback callback) {
+    // Sampling requires an SSE connection for server-to-client messages
+    if (!_sseManager.hasClients(_sessionId)) {
+        Serial.println("[mcpd] Cannot send sampling request: no SSE clients connected");
+        return -1;
+    }
+
+    int id = _samplingManager.queueRequest(request, callback);
+    Serial.printf("[mcpd] Sampling request queued (id: %d)\n", id);
+    return id;
+}
 
 void Server::reportProgress(const String& progressToken, double progress,
                             double total, const String& message) {

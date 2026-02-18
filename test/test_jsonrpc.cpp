@@ -705,11 +705,11 @@ TEST(pagination_resources) {
     ASSERT_STR_CONTAINS(resp.c_str(), "\"nextCursor\"");
 }
 
-TEST(version_is_0_7_0) {
+TEST(version_is_0_8_0) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.7.0\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.8.0\"");
 }
 
 // ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
@@ -1077,6 +1077,195 @@ TEST(progress_token_extraction_in_tools_call) {
     ASSERT_STR_CONTAINS(resp.c_str(), "\\\"echo\\\":\\\"hi\\\"");
     // Request should be completed (not in-flight)
     ASSERT(!s->requests().hasInFlight());
+}
+
+// ── Sampling Tests ─────────────────────────────────────────────────────
+
+TEST(sampling_request_serialization) {
+    MCPSamplingRequest req;
+    req.addUserMessage("What does 42.5°C mean?");
+    req.maxTokens = 200;
+    req.systemPrompt = "You are a sensor expert.";
+    req.temperature = 0.7;
+
+    String json = req.toJsonRpc(9001);
+    ASSERT_STR_CONTAINS(json.c_str(), "\"method\":\"sampling/createMessage\"");
+    ASSERT_STR_CONTAINS(json.c_str(), "\"id\":9001");
+    ASSERT_STR_CONTAINS(json.c_str(), "\"maxTokens\":200");
+    ASSERT_STR_CONTAINS(json.c_str(), "\"systemPrompt\":\"You are a sensor expert.\"");
+    ASSERT_STR_CONTAINS(json.c_str(), "42.5");
+}
+
+TEST(sampling_request_with_model_preferences) {
+    MCPSamplingRequest req;
+    req.addUserMessage("test");
+    req.modelPreferences.intelligencePriority = 0.9;
+    req.modelPreferences.costPriority = 0.1;
+    MCPModelHint hint;
+    hint.name = "claude-3-haiku";
+    req.modelPreferences.hints.push_back(hint);
+
+    String json = req.toJsonRpc(100);
+    ASSERT_STR_CONTAINS(json.c_str(), "\"intelligencePriority\":");
+    ASSERT_STR_CONTAINS(json.c_str(), "\"costPriority\":");
+    ASSERT_STR_CONTAINS(json.c_str(), "claude-3-haiku");
+}
+
+TEST(sampling_request_with_stop_sequences) {
+    MCPSamplingRequest req;
+    req.addUserMessage("test");
+    req.stopSequences.push_back("STOP");
+    req.stopSequences.push_back("END");
+
+    String json = req.toJsonRpc(101);
+    ASSERT_STR_CONTAINS(json.c_str(), "\"stopSequences\"");
+    ASSERT_STR_CONTAINS(json.c_str(), "STOP");
+    ASSERT_STR_CONTAINS(json.c_str(), "END");
+}
+
+TEST(sampling_request_include_context) {
+    MCPSamplingRequest req;
+    req.addUserMessage("test");
+    req.includeContext = "thisServer";
+
+    String json = req.toJsonRpc(102);
+    ASSERT_STR_CONTAINS(json.c_str(), "\"includeContext\":\"thisServer\"");
+}
+
+TEST(sampling_response_parsing) {
+    JsonDocument doc;
+    doc["role"] = "assistant";
+    doc["model"] = "claude-3-haiku";
+    doc["stopReason"] = "endTurn";
+    JsonObject content = doc["content"].to<JsonObject>();
+    content["type"] = "text";
+    content["text"] = "The temperature is high.";
+
+    MCPSamplingResponse resp = MCPSamplingResponse::fromJson(doc.as<JsonObject>());
+    ASSERT(resp.valid);
+    ASSERT_EQ(resp.role, String("assistant"));
+    ASSERT_EQ(resp.model, String("claude-3-haiku"));
+    ASSERT_EQ(resp.text, String("The temperature is high."));
+    ASSERT_EQ(resp.stopReason, String("endTurn"));
+}
+
+TEST(sampling_response_empty_content) {
+    JsonDocument doc;
+    doc["role"] = "assistant";
+    doc["model"] = "test-model";
+    // No content
+    MCPSamplingResponse resp = MCPSamplingResponse::fromJson(doc.as<JsonObject>());
+    ASSERT(!resp.valid);
+}
+
+TEST(sampling_manager_queue_and_drain) {
+    SamplingManager sm;
+    ASSERT(!sm.hasPending());
+
+    MCPSamplingRequest req;
+    req.addUserMessage("Hello");
+    req.maxTokens = 100;
+
+    bool callbackCalled = false;
+    int id = sm.queueRequest(req, [&](const MCPSamplingResponse& resp) {
+        callbackCalled = true;
+    });
+
+    ASSERT(id >= 9000);
+    ASSERT(sm.hasPending());
+    ASSERT_EQ(sm.pendingCount(), (size_t)1);
+
+    auto outgoing = sm.drainOutgoing();
+    ASSERT_EQ(outgoing.size(), (size_t)1);
+    ASSERT_STR_CONTAINS(outgoing[0].c_str(), "sampling/createMessage");
+
+    // Drain again should be empty
+    auto outgoing2 = sm.drainOutgoing();
+    ASSERT_EQ(outgoing2.size(), (size_t)0);
+}
+
+TEST(sampling_manager_handle_response) {
+    SamplingManager sm;
+    MCPSamplingRequest req;
+    req.addUserMessage("test");
+
+    String receivedText;
+    int id = sm.queueRequest(req, [&](const MCPSamplingResponse& resp) {
+        receivedText = resp.text;
+    });
+
+    // Simulate response
+    JsonDocument doc;
+    doc["role"] = "assistant";
+    doc["model"] = "test";
+    doc["stopReason"] = "endTurn";
+    JsonObject content = doc["content"].to<JsonObject>();
+    content["type"] = "text";
+    content["text"] = "Response text";
+
+    bool matched = sm.handleResponse(id, doc.as<JsonObject>());
+    ASSERT(matched);
+    ASSERT_EQ(receivedText, String("Response text"));
+    ASSERT(!sm.hasPending());
+}
+
+TEST(sampling_manager_unknown_response) {
+    SamplingManager sm;
+    JsonDocument doc;
+    doc["role"] = "assistant";
+    bool matched = sm.handleResponse(99999, doc.as<JsonObject>());
+    ASSERT(!matched);
+}
+
+TEST(sampling_multiple_messages) {
+    MCPSamplingRequest req;
+    req.addUserMessage("First question");
+    req.addAssistantMessage("First answer");
+    req.addUserMessage("Follow up");
+
+    String json = req.toJsonRpc(200);
+    ASSERT_STR_CONTAINS(json.c_str(), "First question");
+    ASSERT_STR_CONTAINS(json.c_str(), "First answer");
+    ASSERT_STR_CONTAINS(json.c_str(), "Follow up");
+}
+
+// ── SSE Manager Tests ──────────────────────────────────────────────────
+
+TEST(sse_manager_initial_state) {
+    SSEManager mgr;
+    ASSERT_EQ(mgr.clientCount(), (size_t)0);
+    ASSERT(!mgr.hasClients("any-session"));
+}
+
+// ── Server Sampling Integration Tests ──────────────────────────────────
+
+TEST(server_advertises_sampling_capability) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"sampling\"");
+}
+
+TEST(server_handles_sampling_response_in_jsonrpc) {
+    auto* s = makeTestServer();
+    // Initialize first
+    s->_processJsonRpc(R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}})");
+
+    // Queue a sampling request manually
+    MCPSamplingRequest req;
+    req.addUserMessage("test");
+    String receivedText;
+    int id = s->sampling().queueRequest(req, [&](const MCPSamplingResponse& resp) {
+        receivedText = resp.text;
+    });
+
+    // Simulate client sending back a response
+    String response = String(R"({"jsonrpc":"2.0","id":)") + String(id) +
+        R"(,"result":{"role":"assistant","model":"test","stopReason":"endTurn","content":{"type":"text","text":"AI says hello"}}})";
+    s->_processJsonRpc(response);
+
+    ASSERT_EQ(receivedText, String("AI says hello"));
+    ASSERT(!s->sampling().hasPending());
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

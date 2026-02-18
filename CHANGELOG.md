@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-02-18
+
+### Added
+- **SSE Transport (GET endpoint)** — Server-Sent Events now fully wired into the server:
+  - GET `/mcp` with `Accept: text/event-stream` opens an SSE stream
+  - Server-push for notifications (progress, resource updates, log messages)
+  - SSE Manager handles multiple clients with keepalive and pruning
+  - Pending notifications automatically broadcast to connected SSE clients
+- **Sampling Support** (`MCPSampling.h`) — server can request LLM inference from the client:
+  - `MCPSamplingRequest` — build multi-turn sampling requests with model preferences
+  - `MCPSamplingResponse` — parse client responses with text, model, and stop reason
+  - `SamplingManager` — queues requests, drains via SSE, handles async responses
+  - `server.requestSampling(request, callback)` — high-level API
+  - Model preference hints (cost/speed/intelligence priority, model name hints)
+  - Stop sequences, system prompt, temperature, includeContext support
+  - Server advertises `sampling` capability in `initialize` response
+  - Client responses to sampling requests are automatically routed to callbacks
+- **Filesystem Tool** (`MCPFilesystemTool.h`) — 6 tools for on-chip storage:
+  - `fs_list` — List files in a directory (readOnly)
+  - `fs_read` — Read file contents with optional byte limit (readOnly)
+  - `fs_write` — Write/create files, append mode supported (destructive)
+  - `fs_delete` — Delete files (destructive)
+  - `fs_info` — Filesystem usage stats: total/used/free bytes (readOnly)
+  - `fs_exists` — Check file/directory existence with metadata (readOnly)
+  - Works with SPIFFS, LittleFS, or any `fs::FS` implementation
+  - All tools include proper MCP annotations
+- **Smart Thermostat Example** (`examples/smart_thermostat/`) — demonstrates:
+  - Filesystem tools for temperature logging
+  - Sampling: MCU asks AI to analyze temperature patterns
+  - Custom tools for thermostat control (status, set target/mode)
+  - Prompt for comfort optimization
+- 13 new unit tests for sampling (request serialization, model preferences, stop sequences,
+  context, response parsing, empty content, manager queue/drain/response/unknown, multiple
+  messages, SSE manager state, server sampling capability, server response handling)
+
+### Changed
+- Bumped version to 0.8.0
+- Total tests: 96 → 109 (13 new unit tests) + 15 HTTP integration tests
+- GET `/mcp` now opens SSE stream instead of returning 405
+- `server.loop()` now manages SSE keepalive, notification broadcasting, and sampling outgoing
+- JSON-RPC processor now handles server-initiated response messages (for sampling callbacks)
+- Built-in tools now total 28 (22 + 6 filesystem tools)
+
 ## [0.7.0] - 2026-02-18
 
 ### Added

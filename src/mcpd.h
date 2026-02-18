@@ -29,8 +29,10 @@
 #include "MCPContent.h"
 #include "MCPProgress.h"
 #include "MCPTransport.h"
+#include "MCPTransportSSE.h"
+#include "MCPSampling.h"
 
-#define MCPD_VERSION "0.7.0"
+#define MCPD_VERSION "0.8.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -156,6 +158,21 @@ public:
     /** Access the request tracker for cancellation checking */
     RequestTracker& requests() { return _requestTracker; }
 
+    /** Access the sampling manager for server-initiated LLM requests */
+    SamplingManager& sampling() { return _samplingManager; }
+
+    /** Access the SSE manager for server-push connections */
+    SSEManager& sse() { return _sseManager; }
+
+    /**
+     * Request LLM sampling from the connected client.
+     * The request is queued and sent via SSE; the response arrives asynchronously.
+     * @param request   Sampling request with messages and parameters
+     * @param callback  Called when the client responds
+     * @return Request ID, or -1 if no SSE client is connected
+     */
+    int requestSampling(const MCPSamplingRequest& request, MCPSamplingCallback callback);
+
     /**
      * Report progress for a long-running tool.
      * @param progressToken  Token from the original request's _meta.progressToken
@@ -220,6 +237,8 @@ private:
     Logging _logging;
     CompletionManager _completions;
     RequestTracker _requestTracker;
+    SamplingManager _samplingManager;
+    SSEManager _sseManager;
 
     std::vector<MCPTool> _tools;
     std::vector<std::pair<String, MCPRichToolHandler>> _richTools;  // name → handler

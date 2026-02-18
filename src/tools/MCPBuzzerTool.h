@@ -74,13 +74,13 @@ public:
 
         // buzzer_tone — play a single tone
         server.addTool("buzzer_tone", "Play a tone at a specific frequency and duration",
-            R"({"type":"object","properties":{"frequency":{"type":"integer","minimum":20,"maximum":20000,"description":"Tone frequency in Hz (20-20000)"},"duration":{"type":"integer","minimum":10,"maximum":10000,"description":"Duration in milliseconds (10-10000)"},"duty":{"type":"integer","minimum":1,"maximum":100,"description":"Duty cycle percentage for volume control (default 50, ESP32 only)"}},"required":["frequency","duration"]})",
+            R"=({"type":"object","properties":{"frequency":{"type":"integer","minimum":20,"maximum":20000,"description":"Tone frequency in Hz (20-20000)"},"duration":{"type":"integer","minimum":10,"maximum":10000,"description":"Duration in milliseconds (10-10000)"},"duty":{"type":"integer","minimum":1,"maximum":100,"description":"Duty cycle percentage for volume control (default 50, ESP32 only)"}},"required":["frequency","duration"]})=",
             [](const JsonObject& args) -> String {
                 int freq = args["frequency"];
                 int duration = args["duration"];
 
-                if (freq < 20 || freq > 20000) return R"({"error":"Frequency must be 20-20000 Hz"})";
-                if (duration < 10 || duration > 10000) return R"({"error":"Duration must be 10-10000 ms"})";
+                if (freq < 20 || freq > 20000) return R"=({"error":"Frequency must be 20-20000 Hz"})=";
+                if (duration < 10 || duration > 10000) return R"=({"error":"Duration must be 10-10000 ms"})=";
 
                 cfg.active = true;
                 playNote(freq, duration);
@@ -94,7 +94,7 @@ public:
 
         // buzzer_melody — play a predefined or custom melody
         server.addTool("buzzer_melody", "Play a predefined melody or custom note sequence",
-            R"({"type":"object","properties":{"name":{"type":"string","enum":["alert","success","error","startup","doorbell","siren"],"description":"Predefined melody name"},"notes":{"type":"array","items":{"type":"object","properties":{"freq":{"type":"integer","description":"Frequency in Hz (0 = rest)"},"ms":{"type":"integer","description":"Duration in ms"}},"required":["freq","ms"]},"description":"Custom melody as array of {freq, ms} (max 32 notes)","maxItems":32},"tempo":{"type":"number","minimum":0.25,"maximum":4.0,"description":"Tempo multiplier (0.25 = 4x slower, 4.0 = 4x faster, default 1.0)"}},"required":[]})",
+            R"=({"type":"object","properties":{"name":{"type":"string","enum":["alert","success","error","startup","doorbell","siren"],"description":"Predefined melody name"},"notes":{"type":"array","items":{"type":"object","properties":{"freq":{"type":"integer","description":"Frequency in Hz (0 = rest)"},"ms":{"type":"integer","description":"Duration in ms"}},"required":["freq","ms"]},"description":"Custom melody as array of {freq, ms} (max 32 notes)","maxItems":32},"tempo":{"type":"number","minimum":0.25,"maximum":4.0,"description":"Tempo multiplier (0.25 = 4x slower, 4.0 = 4x faster, default 1.0)"}},"required":[]})=",
             [](const JsonObject& args) -> String {
                 float tempo = args["tempo"] | 1.0f;
                 if (tempo < 0.25f) tempo = 0.25f;
@@ -133,14 +133,14 @@ public:
                         Note m[] = {{NOTE_A4,200},{NOTE_E5,200},{NOTE_A4,200},{NOTE_E5,200}};
                         noteCount = 4; for (int i=0;i<noteCount;i++) melody[i] = m[i];
                     } else {
-                        return R"({"error":"Unknown melody name"})";
+                        return R"=({"error":"Unknown melody name"})=";
                     }
 
                     // Apply tempo
                     for (int i = 0; i < noteCount; i++)
                         melody[i].durationMs = (int)(melody[i].durationMs / tempo);
                 } else {
-                    return R"({"error":"Specify 'name' for predefined melody or 'notes' for custom"})";
+                    return R"=({"error":"Specify 'name' for predefined melody or 'notes' for custom"})=";
                 }
 
                 cfg.active = true;
@@ -159,7 +159,7 @@ public:
 
         // buzzer_stop — stop any playing tone
         server.addTool("buzzer_stop", "Stop the buzzer immediately",
-            R"({"type":"object","properties":{}})",
+            R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
                 bool wasActive = cfg.active;
                 stopTone();

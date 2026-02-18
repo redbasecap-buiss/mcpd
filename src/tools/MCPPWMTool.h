@@ -19,7 +19,7 @@ public:
         // pwm_write — set duty cycle on a pin
         server.addTool("pwm_write",
             "Write a PWM duty cycle to a pin (0-255 by default, or 0-1023 with 10-bit resolution)",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin number"},"duty":{"type":"integer","description":"Duty cycle value (0-255 for 8-bit, 0-1023 for 10-bit)"},"frequency":{"type":"integer","description":"PWM frequency in Hz (default: 5000)","default":5000},"resolution":{"type":"integer","description":"Resolution in bits (8-16, default: 8)","default":8},"channel":{"type":"integer","description":"LEDC channel (0-15, default: auto)","default":0}},"required":["pin","duty"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin number"},"duty":{"type":"integer","description":"Duty cycle value (0-255 for 8-bit, 0-1023 for 10-bit)"},"frequency":{"type":"integer","description":"PWM frequency in Hz (default: 5000)","default":5000},"resolution":{"type":"integer","description":"Resolution in bits (8-16, default: 8)","default":8},"channel":{"type":"integer","description":"LEDC channel (0-15, default: auto)","default":0}},"required":["pin","duty"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 int duty = args["duty"];
@@ -53,7 +53,7 @@ public:
         // pwm_stop — detach PWM from a pin
         server.addTool("pwm_stop",
             "Stop PWM output on a pin",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin number"}},"required":["pin"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin number"}},"required":["pin"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 ledcDetachPin(pin);

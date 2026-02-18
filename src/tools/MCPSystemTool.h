@@ -17,7 +17,7 @@ public:
     static void attach(Server& server) {
         server.addTool("system_info",
             "Get system information: free heap, uptime, chip model, WiFi IP",
-            R"({"type":"object","properties":{}})",
+            R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
                 JsonDocument doc;
                 doc["freeHeap"] = ESP.getFreeHeap();

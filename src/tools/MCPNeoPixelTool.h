@@ -28,7 +28,7 @@ public:
         // neopixel_set — set a single pixel
         server.addTool("neopixel_set",
             "Set a single NeoPixel LED to a specific color",
-            R"({"type":"object","properties":{"index":{"type":"integer","description":"Pixel index (0-based)"},"r":{"type":"integer","description":"Red (0-255)"},"g":{"type":"integer","description":"Green (0-255)"},"b":{"type":"integer","description":"Blue (0-255)"},"show":{"type":"boolean","description":"Update strip immediately (default: true)","default":true}},"required":["index","r","g","b"]})",
+            R"=({"type":"object","properties":{"index":{"type":"integer","description":"Pixel index (0-based)"},"r":{"type":"integer","description":"Red (0-255)"},"g":{"type":"integer","description":"Green (0-255)"},"b":{"type":"integer","description":"Blue (0-255)"},"show":{"type":"boolean","description":"Update strip immediately (default: true)","default":true}},"required":["index","r","g","b"]})=",
             [&strip](const JsonObject& args) -> String {
                 int idx = args["index"];
                 int r = args["r"], g = args["g"], b = args["b"];
@@ -51,7 +51,7 @@ public:
         // neopixel_fill — fill all pixels with one color
         server.addTool("neopixel_fill",
             "Fill all NeoPixel LEDs with a single color",
-            R"({"type":"object","properties":{"r":{"type":"integer","description":"Red (0-255)"},"g":{"type":"integer","description":"Green (0-255)"},"b":{"type":"integer","description":"Blue (0-255)"}},"required":["r","g","b"]})",
+            R"=({"type":"object","properties":{"r":{"type":"integer","description":"Red (0-255)"},"g":{"type":"integer","description":"Green (0-255)"},"b":{"type":"integer","description":"Blue (0-255)"}},"required":["r","g","b"]})=",
             [&strip](const JsonObject& args) -> String {
                 int r = args["r"], g = args["g"], b = args["b"];
                 strip.fill(strip.Color(r, g, b));
@@ -66,7 +66,7 @@ public:
         // neopixel_clear — turn off all pixels
         server.addTool("neopixel_clear",
             "Turn off all NeoPixel LEDs",
-            R"({"type":"object","properties":{}})",
+            R"=({"type":"object","properties":{}})=",
             [&strip](const JsonObject& args) -> String {
                 strip.clear();
                 strip.show();
@@ -76,7 +76,7 @@ public:
         // neopixel_brightness — set global brightness
         server.addTool("neopixel_brightness",
             "Set the global NeoPixel brightness",
-            R"({"type":"object","properties":{"brightness":{"type":"integer","description":"Brightness (0-255)"}},"required":["brightness"]})",
+            R"=({"type":"object","properties":{"brightness":{"type":"integer","description":"Brightness (0-255)"}},"required":["brightness"]})=",
             [&strip](const JsonObject& args) -> String {
                 int brightness = args["brightness"];
                 if (brightness < 0) brightness = 0;

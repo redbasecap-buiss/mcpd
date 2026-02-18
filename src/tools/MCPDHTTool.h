@@ -28,7 +28,7 @@ public:
         // dht_read — read temperature and humidity
         server.addTool("dht_read",
             "Read temperature and humidity from a DHT sensor",
-            R"({"type":"object","properties":{"fahrenheit":{"type":"boolean","description":"Return temperature in Fahrenheit (default: false)","default":false}}})",
+            R"=({"type":"object","properties":{"fahrenheit":{"type":"boolean","description":"Return temperature in Fahrenheit (default: false)","default":false}}})=",
             [&dht](const JsonObject& args) -> String {
                 bool fahrenheit = args["fahrenheit"] | false;
 

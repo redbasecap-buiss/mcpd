@@ -19,7 +19,7 @@ public:
         // servo_write — set servo angle (0-180 degrees)
         server.addTool("servo_write",
             "Set a servo to a specific angle (0-180 degrees)",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin connected to servo signal"},"angle":{"type":"integer","description":"Angle in degrees (0-180)"},"minUs":{"type":"integer","description":"Minimum pulse width in microseconds (default: 544)","default":544},"maxUs":{"type":"integer","description":"Maximum pulse width in microseconds (default: 2400)","default":2400}},"required":["pin","angle"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin connected to servo signal"},"angle":{"type":"integer","description":"Angle in degrees (0-180)"},"minUs":{"type":"integer","description":"Minimum pulse width in microseconds (default: 544)","default":544},"maxUs":{"type":"integer","description":"Maximum pulse width in microseconds (default: 2400)","default":2400}},"required":["pin","angle"]})=",
             [baseChannel](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 int angle = args["angle"];
@@ -52,7 +52,7 @@ public:
         // servo_detach
         server.addTool("servo_detach",
             "Detach servo from a pin (stop PWM signal)",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin to detach"}},"required":["pin"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin to detach"}},"required":["pin"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 ledcDetachPin(pin);

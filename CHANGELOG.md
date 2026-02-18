@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0] - 2026-02-18
+
+### Added
+- **Ethernet Tool** (`tools/MCPEthernetTool.h`) — wired network management for W5500, ENC28J60, LAN8720, DM9051:
+  - `ethernet_config` — initialize Ethernet with chip type, SPI CS pin, DHCP/static IP, custom MAC
+  - `ethernet_status` — link state, IP config, MAC, RX/TX byte counters, uptime
+  - `ethernet_ping` — ICMP ping test with configurable count and timeout
+  - `ethernet_dns_lookup` — hostname resolution via DNS
+
+### Fixed
+- Raw string literal delimiters in tool schemas now use `R"=(...​)="` to prevent premature termination when descriptions contain parentheses (affects ADC, PWM, DHT, Buzzer, NeoPixel, Servo, System, Ultrasonic tools)
+- Added missing Arduino mock functions: `tone()`, `noTone()`, `delayMicroseconds()`, `pulseIn()`
+- Added `unsigned int` assignment operator to ArduinoJson mock
+- Added `serialized()` function to ArduinoJson mock
+- Added DHT sensor library mock (`test/mock_includes/DHT.h`)
+- Added Adafruit NeoPixel library mock (`test/mock_includes/Adafruit_NeoPixel.h`)
+
+### Tests
+- Added 11 Ethernet tool tests (registration, pre/post-init status, config variants, ping, DNS)
+- Added 7 ADC tool tests (single/multi sample reads, voltage conversion, multi-pin)
+- Added 2 PWM tool tests (registration, write)
+- Added 2 DHT tool tests (registration, read)
+- Added 3 Buzzer tool tests (registration, tone, melody)
+- Added 2 NeoPixel tool tests (registration, set color)
+- Added 3 WiFi tool tests (registration, status, scan)
+- Added 2 Servo tool tests (registration, write)
+- Added 2 System tool tests (registration, info)
+- Added 2 Ultrasonic tool tests (registration, read)
+- Total test count: 359 (was 323)
+
 ## [0.21.0] - 2026-02-18
 
 ### Added

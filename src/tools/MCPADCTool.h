@@ -20,7 +20,7 @@ public:
     static void attach(Server& server) {
         // adc_read — single analog reading with optional averaging
         server.addTool("adc_read", "Read analog value from a pin with optional sample averaging",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"Analog-capable GPIO pin number"},"samples":{"type":"integer","description":"Number of samples to average (1-64, default 1)","minimum":1,"maximum":64}},"required":["pin"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"Analog-capable GPIO pin number"},"samples":{"type":"integer","description":"Number of samples to average (1-64, default 1)","minimum":1,"maximum":64}},"required":["pin"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 int samples = args["samples"] | 1;
@@ -50,7 +50,7 @@ public:
 
         // adc_read_voltage — read and convert to voltage
         server.addTool("adc_read_voltage", "Read analog pin and convert to voltage",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"Analog-capable GPIO pin number"},"vref":{"type":"number","description":"Reference voltage in volts (default 3.3)"},"resolution":{"type":"integer","description":"ADC resolution in bits (default 12 = 4096 steps)","enum":[8,10,12]},"samples":{"type":"integer","description":"Number of samples to average (1-64, default 4)","minimum":1,"maximum":64}},"required":["pin"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"Analog-capable GPIO pin number"},"vref":{"type":"number","description":"Reference voltage in volts (default 3.3)"},"resolution":{"type":"integer","description":"ADC resolution in bits (default 12 = 4096 steps)","enum":[8,10,12]},"samples":{"type":"integer","description":"Number of samples to average (1-64, default 4)","minimum":1,"maximum":64}},"required":["pin"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 float vref = args["vref"] | 3.3f;
@@ -81,7 +81,7 @@ public:
 
         // adc_read_multi — read multiple analog pins at once
         server.addTool("adc_read_multi", "Read multiple analog pins in one call",
-            R"({"type":"object","properties":{"pins":{"type":"array","items":{"type":"integer"},"description":"Array of analog-capable GPIO pin numbers (max 8)","maxItems":8},"samples":{"type":"integer","description":"Samples per pin for averaging (1-16, default 1)","minimum":1,"maximum":16}},"required":["pins"]})",
+            R"=({"type":"object","properties":{"pins":{"type":"array","items":{"type":"integer"},"description":"Array of analog-capable GPIO pin numbers (max 8)","maxItems":8},"samples":{"type":"integer","description":"Samples per pin for averaging (1-16, default 1)","minimum":1,"maximum":16}},"required":["pins"]})=",
             [](const JsonObject& args) -> String {
                 JsonArray pins = args["pins"].as<JsonArray>();
                 int samples = args["samples"] | 1;
@@ -116,7 +116,7 @@ public:
 #ifdef ESP32
         // adc_config — ESP32-specific ADC configuration
         server.addTool("adc_config", "Configure ADC attenuation and resolution (ESP32)",
-            R"({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin to configure"},"attenuation":{"type":"string","enum":["0dB","2.5dB","6dB","11dB"],"description":"ADC attenuation: 0dB (0-1.1V), 2.5dB (0-1.5V), 6dB (0-2.2V), 11dB (0-3.3V)"},"resolution":{"type":"integer","enum":[9,10,11,12],"description":"ADC resolution in bits (9-12)"}},"required":["pin"]})",
+            R"=({"type":"object","properties":{"pin":{"type":"integer","description":"GPIO pin to configure"},"attenuation":{"type":"string","enum":["0dB","2.5dB","6dB","11dB"],"description":"ADC attenuation: 0dB (0-1.1V), 2.5dB (0-1.5V), 6dB (0-2.2V), 11dB (0-3.3V)"},"resolution":{"type":"integer","enum":[9,10,11,12],"description":"ADC resolution in bits (9-12)"}},"required":["pin"]})=",
             [](const JsonObject& args) -> String {
                 int pin = args["pin"];
                 String result = "{\"pin\":" + String(pin);

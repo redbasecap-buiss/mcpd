@@ -137,6 +137,10 @@ public:
         if (_node) { _node->type = JsonNodeType::Int; _node->longVal = v; }
         return *this;
     }
+    JsonVariant& operator=(unsigned int v) {
+        if (_node) { _node->type = JsonNodeType::Int; _node->longVal = (long)v; }
+        return *this;
+    }
     JsonVariant& operator=(unsigned long v) {
         if (_node) { _node->type = JsonNodeType::Int; _node->longVal = (long)v; }
         return *this;
@@ -753,6 +757,15 @@ namespace _ajson_detail {
         }
         return node;
     }
+}
+
+// serialized() — wraps a pre-serialized JSON value (raw passthrough)
+// In real ArduinoJson this returns a RawJson type; here we just return a variant with the string.
+inline JsonVariant serialized(const String& s) {
+    static JsonDocument _sdoc;
+    _sdoc.clear();
+    _sdoc["v"] = std::string(s.c_str());
+    return _sdoc["v"];
 }
 
 inline DeserializationError deserializeJson(JsonDocument& doc, const char* json) {

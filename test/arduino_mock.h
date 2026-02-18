@@ -184,6 +184,10 @@ inline void ledcDetachPin(int pin) {}
 
 inline unsigned long millis() { return 12345; }
 inline void delay(unsigned long ms) {}
+inline void delayMicroseconds(unsigned int us) { (void)us; }
+inline void tone(int pin, unsigned int frequency, unsigned long duration = 0) { (void)pin; (void)frequency; (void)duration; }
+inline void noTone(int pin) { (void)pin; }
+inline unsigned long pulseIn(int pin, int state, unsigned long timeout = 1000000UL) { (void)pin; (void)state; (void)timeout; return 500; }
 
 // ── Random ─────────────────────────────────────────────────────────────
 

@@ -71,14 +71,14 @@ public:
     static void registerTools(Server& server) {
         // distance_read — single distance measurement
         server.addTool("distance_read", "Read distance from ultrasonic sensor (HC-SR04). Returns cm, inches, and meters.",
-            R"({"type":"object","properties":{"index":{"type":"integer","minimum":0,"maximum":3,"description":"Sensor index (default 0)"},"samples":{"type":"integer","minimum":1,"maximum":10,"description":"Number of readings to average (default 3, filters outliers)"},"temperature":{"type":"number","description":"Ambient temperature °C for speed-of-sound correction (default 20)"}},"required":[]})",
+            R"=({"type":"object","properties":{"index":{"type":"integer","minimum":0,"maximum":3,"description":"Sensor index (default 0)"},"samples":{"type":"integer","minimum":1,"maximum":10,"description":"Number of readings to average (default 3, filters outliers)"},"temperature":{"type":"number","description":"Ambient temperature °C for speed-of-sound correction (default 20)"}},"required":[]})=",
             [](const JsonObject& args) -> String {
                 int idx = args["index"] | 0;
                 int samples = args["samples"] | 3;
                 float temp = args["temperature"] | -999.0f;
 
                 if (idx < 0 || idx >= configCount)
-                    return R"({"error":"Invalid sensor index"})";
+                    return R"=({"error":"Invalid sensor index"})=";
 
                 Config& cfg = configs[idx];
                 if (temp > -273.0f) cfg.tempC = temp;
@@ -93,7 +93,7 @@ public:
                 }
 
                 if (validCount == 0)
-                    return R"({"error":"No echo received — object out of range or sensor disconnected"})";
+                    return R"=({"error":"No echo received — object out of range or sensor disconnected"})=";
 
                 // Simple average (could do median for more robustness)
                 float sum = 0;
@@ -131,7 +131,7 @@ public:
 
         // distance_read_multi — read all registered sensors at once
         server.addTool("distance_read_multi", "Read distance from all registered ultrasonic sensors",
-            R"({"type":"object","properties":{"samples":{"type":"integer","minimum":1,"maximum":5,"description":"Samples per sensor (default 3)"}},"required":[]})",
+            R"=({"type":"object","properties":{"samples":{"type":"integer","minimum":1,"maximum":5,"description":"Samples per sensor (default 3)"}},"required":[]})=",
             [](const JsonObject& args) -> String {
                 int samples = args["samples"] | 3;
 
@@ -166,11 +166,11 @@ public:
 
         // distance_config — update sensor configuration
         server.addTool("distance_config", "Configure ultrasonic sensor parameters",
-            R"({"type":"object","properties":{"index":{"type":"integer","minimum":0,"maximum":3,"description":"Sensor index (default 0)"},"temperature":{"type":"number","description":"Ambient temperature °C for speed-of-sound correction"},"max_distance_cm":{"type":"number","minimum":2,"maximum":600,"description":"Maximum detection distance in cm"}},"required":[]})",
+            R"=({"type":"object","properties":{"index":{"type":"integer","minimum":0,"maximum":3,"description":"Sensor index (default 0)"},"temperature":{"type":"number","description":"Ambient temperature °C for speed-of-sound correction"},"max_distance_cm":{"type":"number","minimum":2,"maximum":600,"description":"Maximum detection distance in cm"}},"required":[]})=",
             [](const JsonObject& args) -> String {
                 int idx = args["index"] | 0;
                 if (idx < 0 || idx >= configCount)
-                    return R"({"error":"Invalid sensor index"})";
+                    return R"=({"error":"Invalid sensor index"})=";
 
                 Config& cfg = configs[idx];
                 bool changed = false;

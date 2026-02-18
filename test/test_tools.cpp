@@ -730,6 +730,16 @@ TEST(i2s_tools_register_all_six) {
 // ── Modbus Tool Tests ──────────────────────────────────────────────────
 
 #include "../src/tools/MCPModbusTool.h"
+#include "../src/tools/MCPADCTool.h"
+#include "../src/tools/MCPPWMTool.h"
+#include "../src/tools/MCPDHTTool.h"
+#include "../src/tools/MCPBuzzerTool.h"
+#include "../src/tools/MCPNeoPixelTool.h"
+#include "../src/tools/MCPWiFiTool.h"
+#include "../src/tools/MCPEthernetTool.h"
+#include "../src/tools/MCPServoTool.h"
+#include "../src/tools/MCPSystemTool.h"
+#include "../src/tools/MCPUltrasonicTool.h"
 
 TEST(modbus_crc16_known_value) {
     // Standard Modbus CRC test: slave 1, FC 03, addr 0, count 1
@@ -911,6 +921,331 @@ TEST(modbus_tools_register_all_eleven) {
     ASSERT_STR_CONTAINS(resp.c_str(), "modbus_write_registers");
     ASSERT_STR_CONTAINS(resp.c_str(), "modbus_scan");
     ASSERT_STR_CONTAINS(resp.c_str(), "modbus_status");
+}
+
+// ── ADC Tool Tests ─────────────────────────────────────────────────────
+
+TEST(adc_read_single_sample) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read", R"({"pin":34})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pin");
+    ASSERT_STR_CONTAINS(resp.c_str(), "value");
+    ASSERT_STR_CONTAINS(resp.c_str(), "samples");
+}
+
+TEST(adc_read_multi_samples) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read", R"({"pin":34,"samples":8})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "min");
+    ASSERT_STR_CONTAINS(resp.c_str(), "max");
+}
+
+TEST(adc_read_voltage) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read_voltage", R"({"pin":34})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "voltage");
+    ASSERT_STR_CONTAINS(resp.c_str(), "raw");
+    ASSERT_STR_CONTAINS(resp.c_str(), "vref");
+}
+
+TEST(adc_read_voltage_custom_vref) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read_voltage", R"({"pin":34,"vref":5.0,"resolution":10})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "5.0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "resolution");
+}
+
+TEST(adc_read_multi_pins) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read_multi", R"({"pins":[34,35,36]})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "readings");
+}
+
+TEST(adc_read_multi_no_pins) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String resp = call(s, "adc_read_multi", R"({"pins":[]})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "No pins");
+}
+
+TEST(adc_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::ADCTool::attach(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "adc_read");
+    ASSERT_STR_CONTAINS(resp.c_str(), "adc_read_voltage");
+    ASSERT_STR_CONTAINS(resp.c_str(), "adc_read_multi");
+}
+
+// ── PWM Tool Tests ─────────────────────────────────────────────────────
+
+TEST(pwm_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::PWMTool::attach(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pwm_write");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pwm_stop");
+}
+
+TEST(pwm_write_basic) {
+    auto* s = makeServer();
+    mcpd::tools::PWMTool::attach(*s);
+    String resp = call(s, "pwm_write", R"({"pin":25,"duty":128})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pin");
+    ASSERT_STR_CONTAINS(resp.c_str(), "duty");
+}
+
+// ── DHT Tool Tests ─────────────────────────────────────────────────────
+
+TEST(dht_tools_register) {
+    auto* s = makeServer();
+    DHT dht(4, DHT22);
+    mcpd::tools::DHTTool::attach(*s, dht);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "dht_read");
+}
+
+TEST(dht_read_returns_temp_humidity) {
+    auto* s = makeServer();
+    DHT dht(4, DHT22);
+    mcpd::tools::DHTTool::attach(*s, dht);
+    String resp = call(s, "dht_read", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "temperature");
+    ASSERT_STR_CONTAINS(resp.c_str(), "humidity");
+}
+
+// ── Buzzer Tool Tests ──────────────────────────────────────────────────
+
+TEST(buzzer_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::BuzzerTool::attach(*s, 15);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "buzzer_tone");
+    ASSERT_STR_CONTAINS(resp.c_str(), "buzzer_melody");
+}
+
+TEST(buzzer_tone_basic) {
+    auto* s = makeServer();
+    mcpd::tools::BuzzerTool::attach(*s, 15);
+    String resp = call(s, "buzzer_tone", R"({"frequency":1000,"duration":500})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "frequency");
+    ASSERT_STR_CONTAINS(resp.c_str(), "1000");
+}
+
+TEST(buzzer_melody_predefined) {
+    auto* s = makeServer();
+    mcpd::tools::BuzzerTool::attach(*s, 15);
+    String resp = call(s, "buzzer_melody", R"({"name":"alert"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "notes_played");
+}
+
+// ── NeoPixel Tool Tests ────────────────────────────────────────────────
+
+TEST(neopixel_tools_register) {
+    auto* s = makeServer();
+    Adafruit_NeoPixel strip(8, 16);
+    mcpd::tools::NeoPixelTool::attach(*s, strip);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "neopixel_set");
+    ASSERT_STR_CONTAINS(resp.c_str(), "neopixel_fill");
+    ASSERT_STR_CONTAINS(resp.c_str(), "neopixel_clear");
+    ASSERT_STR_CONTAINS(resp.c_str(), "neopixel_brightness");
+}
+
+TEST(neopixel_set_color) {
+    auto* s = makeServer();
+    Adafruit_NeoPixel strip(8, 16);
+    mcpd::tools::NeoPixelTool::attach(*s, strip);
+    String resp = call(s, "neopixel_set", R"({"index":0,"r":255,"g":0,"b":0})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "index");
+}
+
+// ── WiFi Tool Tests ────────────────────────────────────────────────────
+
+TEST(wifi_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::WiFiTool::attach(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "wifi_status");
+    ASSERT_STR_CONTAINS(resp.c_str(), "wifi_scan");
+}
+
+TEST(wifi_status_returns_info) {
+    auto* s = makeServer();
+    mcpd::tools::WiFiTool::attach(*s);
+    String resp = call(s, "wifi_status", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "connected");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ip");
+    ASSERT_STR_CONTAINS(resp.c_str(), "mac");
+}
+
+TEST(wifi_scan_returns_networks) {
+    auto* s = makeServer();
+    mcpd::tools::WiFiTool::attach(*s);
+    String resp = call(s, "wifi_scan", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+    ASSERT_STR_CONTAINS(resp.c_str(), "networks");
+}
+
+// ── Ethernet Tool Tests ────────────────────────────────────────────────
+
+TEST(ethernet_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "ethernet_config");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ethernet_status");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ethernet_ping");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ethernet_dns_lookup");
+}
+
+// Note: Ethernet tool uses static state, so tests must account for shared config.
+// We test uninitialized state FIRST, then initialize and test subsequent operations.
+
+TEST(ethernet_status_before_init) {
+    // This must run before any ethernet_config call
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_status", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "not initialized");
+}
+
+TEST(ethernet_ping_before_init) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_ping", R"({"host":"192.168.1.1"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "not initialized");
+}
+
+TEST(ethernet_dns_before_init) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_dns_lookup", R"({"hostname":"example.com"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "not initialized");
+}
+
+TEST(ethernet_config_w5500) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_config", R"({"chip":"w5500","cs_pin":5})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "initialized");
+    ASSERT_STR_CONTAINS(resp.c_str(), "w5500");
+}
+
+TEST(ethernet_config_static_ip) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_config",
+        R"({"chip":"enc28j60","cs_pin":10,"dhcp":false,"ip":"192.168.1.100","gateway":"192.168.1.1"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "enc28j60");
+    ASSERT_STR_CONTAINS(resp.c_str(), "192.168.1.100");
+}
+
+TEST(ethernet_config_custom_mac) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_config",
+        R"({"chip":"w5500","cs_pin":5,"mac":"AA:BB:CC:DD:EE:FF"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "AA:BB:CC:DD:EE:FF");
+}
+
+TEST(ethernet_status_after_init) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    // Already initialized from previous tests (static state)
+    String resp = call(s, "ethernet_status", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "link_up");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rx_bytes");
+    ASSERT_STR_CONTAINS(resp.c_str(), "tx_bytes");
+    ASSERT_STR_CONTAINS(resp.c_str(), "uptime_ms");
+}
+
+TEST(ethernet_ping_after_init) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_ping", R"({"host":"192.168.1.1","count":5})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "192.168.1.1");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+}
+
+TEST(ethernet_dns_empty_hostname) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_dns_lookup", R"({"hostname":""})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "No hostname");
+}
+
+TEST(ethernet_dns_lookup) {
+    auto* s = makeServer();
+    mcpd::tools::addEthernetTools(*s);
+    String resp = call(s, "ethernet_dns_lookup", R"({"hostname":"example.com"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "example.com");
+}
+
+// ── Servo Tool Tests ───────────────────────────────────────────────────
+
+TEST(servo_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::ServoTool::attach(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "servo_write");
+}
+
+TEST(servo_write_angle) {
+    auto* s = makeServer();
+    mcpd::tools::ServoTool::attach(*s);
+    String resp = call(s, "servo_write", R"({"pin":18,"angle":90})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pin");
+    ASSERT_STR_CONTAINS(resp.c_str(), "angle");
+}
+
+// ── System Tool Tests ──────────────────────────────────────────────────
+
+TEST(system_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::SystemTool::attach(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "system_info");
+}
+
+TEST(system_info_returns_data) {
+    auto* s = makeServer();
+    mcpd::tools::SystemTool::attach(*s);
+    String resp = call(s, "system_info", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "heap");
+    ASSERT_STR_CONTAINS(resp.c_str(), "uptime");
+}
+
+// ── Ultrasonic Tool Tests ──────────────────────────────────────────────
+
+TEST(ultrasonic_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::UltrasonicTool::attach(*s, 12, 14);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance_read");
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance_config");
+}
+
+TEST(ultrasonic_read_distance) {
+    auto* s = makeServer();
+    mcpd::tools::UltrasonicTool::attach(*s, 12, 14);
+    String resp = call(s, "distance_read", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

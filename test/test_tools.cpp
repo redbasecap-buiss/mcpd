@@ -578,6 +578,155 @@ TEST(espnow_tools_register_all_six) {
     ASSERT_STR_CONTAINS(resp.c_str(), "espnow_broadcast");
 }
 
+// ── LoRa Tool Tests ────────────────────────────────────────────────────
+
+#include "../src/tools/MCPLoRaTool.h"
+
+TEST(lora_init_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_init", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_send_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_send", R"({"data":"hello"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_receive_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_receive", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_configure_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_configure", R"({"txPower":10})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_status_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_status", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_sleep_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_sleep", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_cad_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String resp = call(s, "lora_cad", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(lora_tools_register_all_seven) {
+    auto* s = makeServer();
+    mcpd::addLoRaTools(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_init");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_send");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_receive");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_configure");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_status");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_sleep");
+    ASSERT_STR_CONTAINS(resp.c_str(), "lora_cad");
+}
+
+// ── I2S Audio Tool Tests ───────────────────────────────────────────────
+
+#include "../src/tools/MCPI2SAudioTool.h"
+
+TEST(i2s_base64_encode_empty) {
+    String result = mcpd::tools::_i2sBase64Encode(nullptr, 0);
+    ASSERT(result.length() == 0);
+}
+
+TEST(i2s_base64_encode_hello) {
+    const uint8_t data[] = { 'H', 'e', 'l', 'l', 'o' };
+    String result = mcpd::tools::_i2sBase64Encode(data, 5);
+    ASSERT(result == "SGVsbG8=");
+}
+
+TEST(i2s_base64_encode_3bytes) {
+    const uint8_t data[] = { 0x00, 0x01, 0x02 };
+    String result = mcpd::tools::_i2sBase64Encode(data, 3);
+    ASSERT(result == "AAEC");
+}
+
+TEST(i2s_base64_encode_1byte) {
+    const uint8_t data[] = { 0xFF };
+    String result = mcpd::tools::_i2sBase64Encode(data, 1);
+    ASSERT(result == "/w==");
+}
+
+TEST(i2s_init_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_init", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_record_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_record", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_play_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_play", R"({"data":"SGVsbG8="})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_volume_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_volume", R"({"volume":50})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_status_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_status", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_stop_non_esp32_returns_error) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String resp = call(s, "i2s_stop", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "only supported on ESP32");
+}
+
+TEST(i2s_tools_register_all_six) {
+    auto* s = makeServer();
+    mcpd::addI2SAudioTools(*s);
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_init");
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_record");
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_play");
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_volume");
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_status");
+    ASSERT_STR_CONTAINS(resp.c_str(), "i2s_stop");
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {

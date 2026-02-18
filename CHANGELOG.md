@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.0] - 2026-02-18
+
+### Added
+- **LoRa Radio Tool** (`tools/MCPLoRaTool.h`) — SX1276/SX1278 long-range radio via SPI:
+  - `lora_init` — initialize radio with configurable frequency (433/868/915 MHz), spreading factor, bandwidth, coding rate, sync word, preamble, CRC
+  - `lora_send` — transmit packets (text or hex), auto-returns to receive mode
+  - `lora_receive` — read received packets from 32-slot ring buffer with RSSI/SNR metadata
+  - `lora_configure` — change radio parameters on the fly without re-init
+  - `lora_status` — full radio status: config, TX/RX counts, buffered packets, signal quality
+  - `lora_sleep` — put radio in sleep mode for power saving, or wake back up
+  - `lora_cad` — channel activity detection to check if frequency is in use
+  - ISR-safe receive callback with ring buffer
+  - Delivery statistics tracking
+  - `addLoRaTools(server, pins)` — single-call registration
+- **I2S Audio Tool** (`tools/MCPI2SAudioTool.h`) — microphone input and speaker output via I2S:
+  - `i2s_init` — configure I2S for mic, speaker, or duplex mode with sample rate (8-48kHz), bit depth (16/24/32), mono/stereo
+  - `i2s_record` — record audio, returns base64-encoded PCM or WAV (with proper RIFF header)
+  - `i2s_play` — play base64-encoded audio with auto WAV header detection and volume scaling
+  - `i2s_volume` — software volume control (0-100%)
+  - `i2s_status` — interface stats: sample rate, bit depth, volume, total samples recorded/played
+  - `i2s_stop` — clean shutdown and driver uninstall
+  - Built-in base64 encoder/decoder for audio data
+  - Supports INMP441, SPH0645, ICS-43434 mics and MAX98357A, PCM5102 DACs
+  - `addI2SAudioTools(server, pins)` — single-call registration
+- **LoRa Smart Farm Example** (`examples/lora_farm/`) — demonstrates:
+  - ESP32 + LoRa radio for long-range mesh communication between farm nodes
+  - DHT22 temperature/humidity + soil moisture sensor + relay irrigation control
+  - Optional I2S microphone for acoustic pest detection
+  - Custom `soil_read` tool with multi-sample averaging and qualitative assessment
+  - AI-guided farming prompt and soil moisture resource
+- 23 new unit tests:
+  - LoRa tools: non-ESP32 fallback (7), registration (1)
+  - I2S audio tools: base64 encoding (4), non-ESP32 fallback (6), registration (1)
+  - Fixed version assertions in existing tests
+- Version test assertions updated from 0.18.0 to 0.20.0
+
+### Changed
+- Bumped version to 0.20.0
+- Total test count: **304** (222 JSON-RPC + 67 tool tests + 15 HTTP integration)
+- Total built-in tools: **138** (125 + 7 LoRa + 6 I2S)
+
 ## [0.19.0] - 2026-02-18
 
 ### Added

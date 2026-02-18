@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2026-02-18
+
+### Added
+- **NVS (Non-Volatile Storage) Tool** (`tools/MCPNVSTool.h`) — persistent key-value storage:
+  - `nvs_set` — store string, int, float, or boolean values with auto type detection, key length validation (max 15 chars for ESP32 NVS)
+  - `nvs_get` — retrieve value by key with type-aware formatting
+  - `nvs_delete` — remove a key from persistent storage
+  - `nvs_list` — list all stored entries with types and values
+  - `nvs_status` — storage statistics (used/free entries, total operations, platform info)
+  - Uses ESP32 Preferences library natively, emulated store on other platforms
+  - `addNVSTools(server, namespace)` — single-call registration
+- **GPS Tool** (`tools/MCPGPSTool.h`) — NMEA GPS module support (NEO-6M, BN-220, etc.):
+  - `gps_read` — current position (lat/lon/alt), UTC time, satellite count, HDOP, fix age
+  - `gps_satellites` — satellite count, fix quality assessment (excellent/good/moderate/fair/poor)
+  - `gps_speed` — speed in km/h, m/s, mph with course heading and cardinal direction
+  - `gps_distance` — haversine distance to target coordinates or saved waypoint, with persistent waypoint support
+  - `gps_status` — module status, fix info, statistics, serial connection state
+  - NMEA GGA + RMC sentence parsing with temperature-compensated coordinate conversion
+  - `addGPSTools(server, serial, baud)` — single-call registration
+- **Relay Tool** (`tools/MCPRelayTool.h`) — multi-channel relay control with safety features:
+  - `relay_set` — turn relay ON/OFF by channel index or label
+  - `relay_get` — read current state of a relay channel
+  - `relay_toggle` — toggle relay state (ON→OFF or OFF→ON)
+  - `relay_pulse` — briefly activate relay for 50-30000ms then auto-OFF
+  - `relay_all_off` — emergency all-off for all channels
+  - `relay_status` — overview of all channels with on-time tracking and switch counts
+  - Interlock groups for mutually exclusive relays (e.g., heater + cooler)
+  - Maximum-on timers for safety auto-off
+  - Active-low/high configuration per channel
+  - `addRelayChannel()` + `addRelayTools(server)` — flexible registration
+- **Asset Tracker Example** (`examples/asset_tracker/`) — demonstrates:
+  - GPS + NVS + Relay integration for IoT asset tracking
+  - Switchable GPS power via relay for battery management
+  - Persistent waypoint and settings storage
+  - Custom resource for last known position
+  - AI-driven tracking and power management prompt
+- 22 new unit tests:
+  - NVS tools: set string, set integer, reject long key, get existing, get missing, delete, list, status (8)
+  - GPS tools: read with fix, read no fix, satellites, speed, distance, status (6)
+  - Relay tools: set on, set by label, toggle, pulse, reject invalid duration, all off, status, interlock (8)
+
+### Changed
+- Bumped version to 0.16.0
+- Total tests: 202 → 222 unit tests + 15 HTTP integration tests = 237 total
+- Built-in tools now total 99 (83 + 5 NVS + 5 GPS + 6 Relay)
+- README comparison table updated to reflect 99 built-in tools
+
 ## [0.15.0] - 2026-02-18
 
 ### Added

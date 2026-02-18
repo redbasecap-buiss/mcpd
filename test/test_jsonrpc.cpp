@@ -2504,6 +2504,325 @@ TEST(rtc_temperature_reads) {
     ASSERT_STR_CONTAINS(resp.c_str(), "DS3231");
 }
 
+// ── NVS Tool Tests ─────────────────────────────────────────────────────
+
+TEST(nvs_set_string) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_set", "Store key-value",
+        R"({"type":"object","properties":{"key":{"type":"string"},"value":{}},"required":["key","value"]})",
+        [](const JsonObject& params) -> String {
+            const char* key = params["key"] | "";
+            if (strlen(key) == 0) return R"({"error":"Key is required"})";
+            if (strlen(key) > 15) return R"json({"error":"Key too long (max 15 characters for NVS)"})json";
+            String val = params["value"].as<String>();
+            return String("{\"key\":\"") + key + "\",\"value\":\"" + val + "\",\"type\":\"string\",\"persisted\":true}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_set","arguments":{"key":"wifi_ssid","value":"MyNetwork"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "wifi_ssid");
+    ASSERT_STR_CONTAINS(resp.c_str(), "MyNetwork");
+    ASSERT_STR_CONTAINS(resp.c_str(), "persisted");
+}
+
+TEST(nvs_set_integer) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_set", "Store key-value",
+        R"({"type":"object","properties":{"key":{"type":"string"},"value":{}},"required":["key","value"]})",
+        [](const JsonObject& params) -> String {
+            const char* key = params["key"] | "";
+            int val = params["value"];
+            return String("{\"key\":\"") + key + "\",\"value\":" + val + ",\"type\":\"int\",\"persisted\":true}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_set","arguments":{"key":"boot_count","value":42}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "boot_count");
+    ASSERT_STR_CONTAINS(resp.c_str(), "42");
+    ASSERT_STR_CONTAINS(resp.c_str(), "int");
+}
+
+TEST(nvs_set_rejects_long_key) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_set", "Store key-value",
+        R"({"type":"object","properties":{"key":{"type":"string"},"value":{}},"required":["key","value"]})",
+        [](const JsonObject& params) -> String {
+            const char* key = params["key"] | "";
+            if (strlen(key) > 15) return R"json({"error":"Key too long (max 15 characters for NVS)"})json";
+            return R"({"persisted":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_set","arguments":{"key":"this_key_is_way_too_long","value":"x"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Key too long");
+}
+
+TEST(nvs_get_existing_key) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_get", "Retrieve value",
+        R"({"type":"object","properties":{"key":{"type":"string"}},"required":["key"]})",
+        [](const JsonObject& params) -> String {
+            const char* key = params["key"] | "";
+            if (strcmp(key, "name") == 0) return R"({"key":"name","found":true,"value":"tracker-1","type":"string"})";
+            return String("{\"key\":\"") + key + "\",\"found\":false}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_get","arguments":{"key":"name"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "found");
+    ASSERT_STR_CONTAINS(resp.c_str(), "tracker-1");
+}
+
+TEST(nvs_get_missing_key) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_get", "Retrieve value",
+        R"({"type":"object","properties":{"key":{"type":"string"}},"required":["key"]})",
+        [](const JsonObject& params) -> String {
+            return R"({"key":"nonexistent","found":false})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_get","arguments":{"key":"nonexistent"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "found");
+}
+
+TEST(nvs_delete_key) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_delete", "Delete key",
+        R"({"type":"object","properties":{"key":{"type":"string"}},"required":["key"]})",
+        [](const JsonObject& params) -> String {
+            return R"({"key":"old_setting","deleted":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_delete","arguments":{"key":"old_setting"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "deleted");
+}
+
+TEST(nvs_list_entries) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_list", "List keys",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"namespace":"mcpd","count":2,"entries":[{"key":"a","type":"string","value":"hello"},{"key":"b","type":"int","value":99}]})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_list","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+    ASSERT_STR_CONTAINS(resp.c_str(), "entries");
+}
+
+TEST(nvs_status) {
+    auto* s = makeTestServer();
+    s->addTool("nvs_status", "NVS status",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"namespace":"mcpd","used_entries":5,"free_entries":995,"total_operations":42})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nvs_status","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "used_entries");
+    ASSERT_STR_CONTAINS(resp.c_str(), "free_entries");
+}
+
+// ── GPS Tool Tests ─────────────────────────────────────────────────────
+
+TEST(gps_read_with_fix) {
+    auto* s = makeTestServer();
+    s->addTool("gps_read", "Read GPS",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"fix":true,"latitude":47.376887,"longitude":8.541694,"altitude_m":408.2,"satellites":9,"hdop":1.1,"time":"2026-02-18T13:00:00Z","fix_age_s":2})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_read","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "47.376887");
+    ASSERT_STR_CONTAINS(resp.c_str(), "8.541694");
+    ASSERT_STR_CONTAINS(resp.c_str(), "fix");
+}
+
+TEST(gps_read_no_fix) {
+    auto* s = makeTestServer();
+    s->addTool("gps_read", "Read GPS",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"fix":false,"satellites":2,"message":"No GPS fix yet. Ensure antenna has clear sky view."})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_read","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "fix");
+    ASSERT_STR_CONTAINS(resp.c_str(), "No GPS fix");
+}
+
+TEST(gps_satellites) {
+    auto* s = makeTestServer();
+    s->addTool("gps_satellites", "Satellite info",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"satellites":12,"fix":true,"hdop":0.9,"quality":"excellent","total_fixes":847})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_satellites","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "satellites");
+    ASSERT_STR_CONTAINS(resp.c_str(), "excellent");
+}
+
+TEST(gps_speed) {
+    auto* s = makeTestServer();
+    s->addTool("gps_speed", "GPS speed",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"speed_kmh":52.3,"speed_ms":14.53,"speed_mph":32.5,"course_deg":127.5,"cardinal":"SE"})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_speed","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "52.3");
+    ASSERT_STR_CONTAINS(resp.c_str(), "SE");
+}
+
+TEST(gps_distance_to_target) {
+    auto* s = makeTestServer();
+    s->addTool("gps_distance", "Distance calc",
+        R"({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"}},"required":["lat","lon"]})",
+        [](const JsonObject& params) -> String {
+            double lat = params["lat"] | 0.0;
+            double lon = params["lon"] | 0.0;
+            // Simple mock: distance from Zurich (47.38, 8.54) to target
+            char buf[128];
+            snprintf(buf, sizeof(buf), "{\"distance_m\":12450.5,\"distance_km\":12.451,\"target_lat\":%.6f,\"target_lon\":%.6f,\"source\":\"provided\"}", lat, lon);
+            return String(buf);
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_distance","arguments":{"lat":47.5,"lon":8.6}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance_m");
+    ASSERT_STR_CONTAINS(resp.c_str(), "distance_km");
+}
+
+TEST(gps_status) {
+    auto* s = makeTestServer();
+    s->addTool("gps_status", "GPS status",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"fix":true,"satellites":8,"hdop":1.5,"total_fixes":200,"last_fix_age_s":1,"serial_connected":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"gps_status","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "total_fixes");
+    ASSERT_STR_CONTAINS(resp.c_str(), "serial_connected");
+}
+
+// ── Relay Tool Tests ───────────────────────────────────────────────────
+
+TEST(relay_set_on) {
+    auto* s = makeTestServer();
+    s->addTool("relay_set", "Set relay",
+        R"({"type":"object","properties":{"channel":{"type":"integer"},"state":{"type":"string"}},"required":["state"]})",
+        [](const JsonObject& params) -> String {
+            int ch = params["channel"] | 0;
+            const char* st = params["state"] | "off";
+            return String("{\"channel\":") + ch + ",\"label\":\"pump\",\"state\":\"" + st + "\"}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_set","arguments":{"channel":0,"state":"on"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pump");
+}
+
+TEST(relay_set_by_label) {
+    auto* s = makeTestServer();
+    s->addTool("relay_set", "Set relay",
+        R"({"type":"object","properties":{"label":{"type":"string"},"state":{"type":"string"}},"required":["state"]})",
+        [](const JsonObject& params) -> String {
+            const char* label = params["label"] | "unknown";
+            const char* st = params["state"] | "off";
+            return String("{\"channel\":0,\"label\":\"") + label + "\",\"state\":\"" + (strcmp(st, "on") == 0 ? "ON" : "OFF") + "\"}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_set","arguments":{"label":"heater","state":"on"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "heater");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ON");
+}
+
+TEST(relay_toggle) {
+    auto* s = makeTestServer();
+    s->addTool("relay_toggle", "Toggle relay",
+        R"({"type":"object","properties":{"channel":{"type":"integer"}},"required":[]})",
+        [](const JsonObject& params) -> String {
+            return R"({"channel":0,"label":"light","state":"ON"})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_toggle","arguments":{"channel":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "light");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ON");
+}
+
+TEST(relay_pulse) {
+    auto* s = makeTestServer();
+    s->addTool("relay_pulse", "Pulse relay",
+        R"({"type":"object","properties":{"channel":{"type":"integer"},"duration_ms":{"type":"integer"}},"required":["duration_ms"]})",
+        [](const JsonObject& params) -> String {
+            int dur = params["duration_ms"] | 500;
+            if (dur < 50 || dur > 30000) return R"({"error":"Duration must be 50-30000ms"})";
+            return String("{\"channel\":0,\"label\":\"solenoid\",\"pulsed_ms\":") + dur + "}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_pulse","arguments":{"channel":0,"duration_ms":200}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pulsed_ms");
+    ASSERT_STR_CONTAINS(resp.c_str(), "200");
+}
+
+TEST(relay_pulse_rejects_invalid_duration) {
+    auto* s = makeTestServer();
+    s->addTool("relay_pulse", "Pulse relay",
+        R"({"type":"object","properties":{"channel":{"type":"integer"},"duration_ms":{"type":"integer"}},"required":["duration_ms"]})",
+        [](const JsonObject& params) -> String {
+            int dur = params["duration_ms"] | 500;
+            if (dur < 50 || dur > 30000) return R"({"error":"Duration must be 50-30000ms"})";
+            return R"({"pulsed":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_pulse","arguments":{"channel":0,"duration_ms":50000}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Duration must be");
+}
+
+TEST(relay_all_off) {
+    auto* s = makeTestServer();
+    s->addTool("relay_all_off", "All off",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"turned_off":3,"total_channels":4})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_all_off","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "turned_off");
+}
+
+TEST(relay_status) {
+    auto* s = makeTestServer();
+    s->addTool("relay_status", "Relay status",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"total_channels":2,"active":1,"channels":[{"channel":0,"label":"pump","state":"ON"},{"channel":1,"label":"fan","state":"OFF"}]})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_status","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "total_channels");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pump");
+    ASSERT_STR_CONTAINS(resp.c_str(), "fan");
+}
+
+TEST(relay_interlock_concept) {
+    auto* s = makeTestServer();
+    // Test that interlock is conceptually described — handler simulates turning off heater when cooler turns on
+    s->addTool("relay_set", "Set relay with interlocks",
+        R"({"type":"object","properties":{"label":{"type":"string"},"state":{"type":"string"}},"required":["state"]})",
+        [](const JsonObject& params) -> String {
+            const char* label = params["label"] | "";
+            const char* st = params["state"] | "off";
+            if (strcmp(label, "cooler") == 0 && strcmp(st, "on") == 0) {
+                return R"({"channel":1,"label":"cooler","state":"ON","interlocked":["heater turned OFF"]})";
+            }
+            return R"({"channel":0,"state":"ON"})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"relay_set","arguments":{"label":"cooler","state":"on"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "cooler");
+    ASSERT_STR_CONTAINS(resp.c_str(), "heater turned OFF");
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {

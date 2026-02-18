@@ -30,6 +30,11 @@ struct MCPToolAnnotations {
     bool openWorldHint = true;   // Tool interacts with external entities (default true per spec)
     bool hasAnnotations = false; // Internal: whether annotations were explicitly set
 
+    MCPToolAnnotations& setReadOnlyHint(bool v) { readOnlyHint = v; if (v) destructiveHint = false; hasAnnotations = true; return *this; }
+    MCPToolAnnotations& setDestructiveHint(bool v) { destructiveHint = v; hasAnnotations = true; return *this; }
+    MCPToolAnnotations& setIdempotentHint(bool v) { idempotentHint = v; hasAnnotations = true; return *this; }
+    MCPToolAnnotations& setOpenWorldHint(bool v) { openWorldHint = v; hasAnnotations = true; return *this; }
+
     void toJson(JsonObject& obj) const {
         if (!title.isEmpty()) obj["title"] = title;
         obj["readOnlyHint"] = readOnlyHint;
@@ -76,6 +81,13 @@ struct MCPTool {
     /** Convenience: mark as idempotent */
     MCPTool& markIdempotent() {
         annotations.idempotentHint = true;
+        annotations.hasAnnotations = true;
+        return *this;
+    }
+
+    /** Builder-style: set annotations from MCPToolAnnotations */
+    MCPTool& annotate(const MCPToolAnnotations& ann) {
+        annotations = ann;
         annotations.hasAnnotations = true;
         return *this;
     }

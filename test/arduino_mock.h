@@ -35,7 +35,17 @@ public:
     String(long v) : _s(std::to_string(v)) {}
     String(unsigned long v) : _s(std::to_string(v)) {}
     String(float v) : _s(std::to_string(v)) {}
+    String(float v, int decimals) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.*f", decimals, (double)v);
+        _s = buf;
+    }
     String(double v) : _s(std::to_string(v)) {}
+    String(double v, int decimals) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.*f", decimals, v);
+        _s = buf;
+    }
 
     const char* c_str() const { return _s.c_str(); }
     size_t length() const { return _s.length(); }
@@ -112,9 +122,21 @@ public:
 
     bool operator<(const String& rhs) const { return _s < rhs._s; }
 
+    void replace(const String& find, const String& repl) {
+        size_t pos = 0;
+        while ((pos = _s.find(find._s, pos)) != std::string::npos) {
+            _s.replace(pos, find._s.length(), repl._s);
+            pos += repl._s.length();
+        }
+    }
+    void replace(const char* find, const char* repl) {
+        replace(String(find), String(repl));
+    }
+
     String operator+(const String& rhs) const { return String(_s + rhs._s); }
     String operator+(const char* rhs) const { return String(_s + (rhs ? rhs : "")); }
     String operator+(int v) const { return String(_s + std::to_string(v)); }
+    String operator+(unsigned long v) const { return String(_s + std::to_string(v)); }
     String operator+(float v) const { return String(_s + std::to_string(v)); }
     String& operator+=(const String& rhs) { _s += rhs._s; return *this; }
     String& operator+=(const char* rhs) { _s += (rhs ? rhs : ""); return *this; }

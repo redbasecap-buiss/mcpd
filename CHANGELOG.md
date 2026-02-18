@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.0] - 2026-02-18
+
+### Added
+- **SD Card Tool** (`tools/MCPSDCardTool.h`) — file storage on SD/microSD cards:
+  - `sd_mount` — initialize SD card with configurable CS pin
+  - `sd_info` — card type, capacity, usage statistics, read/write counters
+  - `sd_list` — list files and directories at a given path
+  - `sd_read` — read file contents with offset and length support (max 4096 bytes)
+  - `sd_write` — write/overwrite file content (destructive)
+  - `sd_append` — append to file, creates if not exists
+  - `sd_delete` — delete a file (destructive)
+  - Emulated filesystem for testing on non-SD platforms
+  - `addSDCardTools(server, csPin)` — single-call registration
+- **Battery Monitor Tool** (`tools/MCPBatteryTool.h`) — battery voltage and charge monitoring:
+  - `battery_read` — current voltage, percentage, charge level (good/moderate/low/critical), charging state
+  - `battery_status` — detailed status with voltage trend (rising/stable/falling), estimated runtime, configuration
+  - `battery_calibrate` — update voltage mapping: vFull, vEmpty, divider ratio, vRef, chemistry, charging pin
+  - `battery_history` — recent reading history for trend analysis (up to 100 readings)
+  - 16-sample ADC averaging on ESP32 for stable readings
+  - Non-linear percentage mapping, configurable for LiPo/LiFePO4/NiMH/custom
+  - `addBatteryTools(server, adcPin, dividerRatio)` — single-call registration
+- **Portable Data Logger Example** (`examples/portable_logger/`) — demonstrates:
+  - SD card + battery + DHT sensor integration for portable environmental logging
+  - Custom resource for live logger status
+  - AI-driven data logging prompt with power management awareness
+- **MCPTool::annotate()** — builder-style method for setting tool annotations inline
+- **MCPToolAnnotations builder methods** — `setReadOnlyHint()`, `setDestructiveHint()`, `setIdempotentHint()`, `setOpenWorldHint()` for fluent annotation construction
+- **Arduino mock improvements** — `String(float, decimals)`, `String::replace()`, `operator+(unsigned long)` for better host-side test coverage
+- 12 new unit tests:
+  - SD Card tools: mount, write+read, append, read-not-mounted, delete, delete-nonexistent, list, info (8)
+  - Battery tools: read, status, calibrate, history (4)
+
+### Changed
+- Bumped version to 0.18.0
+- Total test count: **250** (222 JSON-RPC + 28 tool tests)
+- Total built-in tools: **114** (103 + 7 SD Card + 4 Battery)
+
 ## [0.17.0] - 2026-02-18
 
 ### Added

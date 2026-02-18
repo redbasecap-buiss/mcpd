@@ -1,5 +1,25 @@
 # Upgrading mcpd
 
+## From 0.17.x to 0.18.0
+
+**No breaking changes.** Drop-in upgrade.
+
+### New tools (opt-in)
+
+```cpp
+#include <mcpd.h>
+#include <tools/MCPSDCardTool.h>
+#include <tools/MCPBatteryTool.h>
+
+mcpd::Server mcp("my-device");
+mcpd::tools::addSDCardTools(mcp, 5);      // CS pin 5
+mcpd::tools::addBatteryTools(mcp, 34, 2.0); // ADC pin 34, divider ratio 2.0
+```
+
+### MCPTool API addition (non-breaking)
+
+`MCPTool::annotate()` and `MCPToolAnnotations::setReadOnlyHint()` etc. added as convenience builders. Existing `setAnnotations()` still works.
+
 ## From 0.16.x to 0.17.0
 
 **No breaking changes.** Drop-in upgrade.

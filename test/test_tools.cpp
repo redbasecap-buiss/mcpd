@@ -273,6 +273,157 @@ TEST(ping_returns_empty_object) {
     ASSERT_STR_CONTAINS(resp.c_str(), "\"result\":{}");
 }
 
+// ── SD Card Tool Tests ─────────────────────────────────────────────────
+
+#include "../src/tools/MCPSDCardTool.h"
+
+TEST(sd_mount_succeeds) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = false;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+    String resp = call(s, "sd_mount", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "mounted");
+    ASSERT_STR_CONTAINS(resp.c_str(), "true");
+    ASSERT(mcpd::tools::SDCardTool::mounted());
+}
+
+TEST(sd_write_and_read_file) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+
+    String wresp = call(s, "sd_write", R"({"path":"/test.txt","content":"hello world"})");
+    ASSERT_STR_CONTAINS(wresp.c_str(), "bytes_written");
+    ASSERT_STR_CONTAINS(wresp.c_str(), "11");
+
+    String rresp = call(s, "sd_read", R"({"path":"/test.txt"})");
+    ASSERT_STR_CONTAINS(rresp.c_str(), "hello world");
+    ASSERT_STR_CONTAINS(rresp.c_str(), "bytes_read");
+}
+
+TEST(sd_append_creates_and_appends) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+
+    call(s, "sd_append", R"({"path":"/log.csv","content":"a,b,c\n"})");
+    call(s, "sd_append", R"({"path":"/log.csv","content":"1,2,3\n"})");
+
+    String rresp = call(s, "sd_read", R"({"path":"/log.csv"})");
+    ASSERT_STR_CONTAINS(rresp.c_str(), "a,b,c");
+    ASSERT_STR_CONTAINS(rresp.c_str(), "1,2,3");
+}
+
+TEST(sd_read_not_mounted_error) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = false;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+    String resp = call(s, "sd_read", R"({"path":"/test.txt"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "not mounted");
+}
+
+TEST(sd_delete_file) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+
+    call(s, "sd_write", R"({"path":"/temp.txt","content":"data"})");
+    String dresp = call(s, "sd_delete", R"({"path":"/temp.txt"})");
+    ASSERT_STR_CONTAINS(dresp.c_str(), "deleted");
+    ASSERT_STR_CONTAINS(dresp.c_str(), "true");
+
+    String rresp = call(s, "sd_read", R"({"path":"/temp.txt"})");
+    ASSERT_STR_CONTAINS(rresp.c_str(), "not found");
+}
+
+TEST(sd_delete_nonexistent_error) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+    String resp = call(s, "sd_delete", R"({"path":"/ghost.txt"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "not found");
+}
+
+TEST(sd_list_shows_files) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+
+    call(s, "sd_write", R"({"path":"/data.csv","content":"x"})");
+    call(s, "sd_write", R"({"path":"/config.json","content":"y"})");
+
+    String resp = call(s, "sd_list", R"({"path":"/"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "data.csv");
+    ASSERT_STR_CONTAINS(resp.c_str(), "config.json");
+}
+
+TEST(sd_info_shows_stats) {
+    auto* s = makeServer();
+    mcpd::tools::SDCardTool::mounted() = true;
+    mcpd::tools::SDCardTool::emulatedFS().clear();
+    mcpd::tools::addSDCardTools(*s, 5);
+    String resp = call(s, "sd_info", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "total_mb");
+    ASSERT_STR_CONTAINS(resp.c_str(), "emulated");
+}
+
+// ── Battery Tool Tests ─────────────────────────────────────────────────
+
+#include "../src/tools/MCPBatteryTool.h"
+
+TEST(battery_read_returns_voltage) {
+    auto* s = makeServer();
+    mcpd::tools::BatteryTool::history().clear();
+    mcpd::tools::addBatteryTools(*s, 34, 2.0f);
+    String resp = call(s, "battery_read", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "voltage");
+    ASSERT_STR_CONTAINS(resp.c_str(), "percentage");
+    ASSERT_STR_CONTAINS(resp.c_str(), "level");
+    ASSERT_STR_CONTAINS(resp.c_str(), "LiPo");
+}
+
+TEST(battery_status_shows_trend) {
+    auto* s = makeServer();
+    mcpd::tools::BatteryTool::history().clear();
+    mcpd::tools::addBatteryTools(*s, 34, 2.0f);
+    String resp = call(s, "battery_status", R"({})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "trend");
+    ASSERT_STR_CONTAINS(resp.c_str(), "config");
+    ASSERT_STR_CONTAINS(resp.c_str(), "v_full");
+}
+
+TEST(battery_calibrate_updates_config) {
+    auto* s = makeServer();
+    mcpd::tools::BatteryTool::history().clear();
+    mcpd::tools::addBatteryTools(*s, 34, 2.0f);
+    String resp = call(s, "battery_calibrate", R"({"v_full":3.6,"v_empty":2.5,"chemistry":"LiFePO4"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "calibrated");
+    ASSERT_STR_CONTAINS(resp.c_str(), "LiFePO4");
+    ASSERT_STR_CONTAINS(resp.c_str(), "3.60");
+    ASSERT_STR_CONTAINS(resp.c_str(), "2.50");
+}
+
+TEST(battery_history_returns_readings) {
+    auto* s = makeServer();
+    mcpd::tools::BatteryTool::history().clear();
+    mcpd::tools::addBatteryTools(*s, 34, 2.0f);
+    // Generate a few readings
+    call(s, "battery_read", R"({})");
+    call(s, "battery_read", R"({})");
+    call(s, "battery_read", R"({})");
+
+    String resp = call(s, "battery_history", R"({"count":5})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "readings");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {

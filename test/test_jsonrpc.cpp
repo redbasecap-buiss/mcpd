@@ -712,7 +712,7 @@ TEST(version_is_0_11_0_compat) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.11.0\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.12.0\"");
 }
 
 // ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
@@ -1567,7 +1567,7 @@ TEST(version_0_11_0) {
     Server* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "0.11.0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "0.12.0");
 }
 
 // ── Watchdog Tool Tests ────────────────────────────────────────────────
@@ -1692,6 +1692,192 @@ TEST(server_heap_monitor_access) {
     // Just verify we can access it
     s->heap().setWarningThreshold(5000);
     ASSERT(!s->heap().isLow());
+}
+
+// ── CAN Tool Tests (unit-level, mock handlers) ────────────────────────
+
+TEST(can_tool_status_mock) {
+    auto* s = makeTestServer();
+    s->addTool("can_status", "CAN status", R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return "{\"state\":\"running\",\"tx_error_counter\":0,\"rx_error_counter\":0}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"can_status","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "running");
+    ASSERT_STR_CONTAINS(resp.c_str(), "tx_error_counter");
+}
+
+TEST(can_tool_send_mock) {
+    auto* s = makeTestServer();
+    bool called = false;
+    s->addTool("can_send", "CAN send", R"({"type":"object","properties":{}})",
+        [&called](const JsonObject& params) -> String {
+            called = true;
+            int id = params["id"] | -1;
+            JsonDocument doc;
+            doc["sent"] = true;
+            doc["id"] = id;
+            doc["dlc"] = 3;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"can_send","arguments":{"id":291,"data":[1,2,3]}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT(called);
+    ASSERT_STR_CONTAINS(resp.c_str(), "sent");
+    ASSERT_STR_CONTAINS(resp.c_str(), "291");
+}
+
+TEST(can_tool_receive_empty_mock) {
+    auto* s = makeTestServer();
+    s->addTool("can_receive", "CAN recv", R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return "{\"frames\":[],\"count\":0}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"can_receive","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+}
+
+// ── Encoder Tool Tests ─────────────────────────────────────────────────
+
+TEST(encoder_read_mock) {
+    auto* s = makeTestServer();
+    s->addTool("encoder_read", "Read encoder", R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return "{\"index\":0,\"position\":42,\"idle_ms\":100}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"encoder_read","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "position");
+    ASSERT_STR_CONTAINS(resp.c_str(), "42");
+}
+
+TEST(encoder_reset_mock) {
+    auto* s = makeTestServer();
+    long position = 42;
+    s->addTool("encoder_reset", "Reset encoder", R"({"type":"object","properties":{}})",
+        [&position](const JsonObject& params) -> String {
+            position = params["value"] | 0L;
+            JsonDocument doc;
+            doc["index"] = 0;
+            doc["position"] = position;
+            doc["reset"] = true;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"encoder_reset","arguments":{"index":0,"value":100}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "position");
+    ASSERT_STR_CONTAINS(resp.c_str(), "100");
+    ASSERT_EQ(position, 100L);
+}
+
+TEST(encoder_config_mock) {
+    auto* s = makeTestServer();
+    s->addTool("encoder_config", "Config encoder", R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return "{\"index\":0,\"steps_per_rev\":20,\"configured\":true}";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"encoder_config","arguments":{"steps_per_rev":20}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "configured");
+}
+
+// ── Diagnostics Tool Tests ─────────────────────────────────────────────
+
+TEST(diagnostics_tool_mock) {
+    auto* s = makeTestServer();
+    s->addTool("server_diagnostics", "Diagnostics", R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            JsonDocument doc;
+            doc["version"]["mcpd"] = MCPD_VERSION;
+            doc["version"]["mcp_protocol"] = MCPD_MCP_PROTOCOL_VERSION;
+            doc["uptime"]["seconds"] = 123;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"server_diagnostics","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), MCPD_VERSION);
+    ASSERT_STR_CONTAINS(resp.c_str(), "uptime");
+}
+
+TEST(diagnostics_version_macros) {
+    ASSERT(strlen(MCPD_VERSION) > 0);
+    ASSERT(strlen(MCPD_MCP_PROTOCOL_VERSION) > 0);
+    ASSERT_STR_CONTAINS(MCPD_MCP_PROTOCOL_VERSION, "2025");
+    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.12.0");
+}
+
+// ── Batch JSON-RPC edge cases ──────────────────────────────────────────
+
+TEST(batch_triple_notifications_empty) {
+    auto* s = makeTestServer();
+    String init = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test"}}})";
+    s->_processJsonRpc(init);
+    String body = R"([
+        {"jsonrpc":"2.0","method":"notifications/initialized"},
+        {"jsonrpc":"2.0","method":"notifications/initialized"},
+        {"jsonrpc":"2.0","method":"notifications/initialized"}
+    ])";
+    String resp = s->_processJsonRpc(body);
+    ASSERT(resp.isEmpty());
+}
+
+TEST(batch_two_pings_returns_array) {
+    auto* s = makeTestServer();
+    String init = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test"}}})";
+    s->_processJsonRpc(init);
+    String body = R"([
+        {"jsonrpc":"2.0","method":"ping","id":77},
+        {"jsonrpc":"2.0","method":"ping","id":78}
+    ])";
+    String resp = s->_processJsonRpc(body);
+    ASSERT_STR_CONTAINS(resp.c_str(), "[");
+    ASSERT_STR_CONTAINS(resp.c_str(), "77");
+    ASSERT_STR_CONTAINS(resp.c_str(), "78");
+}
+
+// ── Error handling edge cases ──────────────────────────────────────────
+
+TEST(error_invalid_jsonrpc_version) {
+    auto* s = makeTestServer();
+    String body = R"({"jsonrpc":"1.0","method":"ping","id":1})";
+    String resp = s->_processJsonRpc(body);
+    ASSERT_STR_CONTAINS(resp.c_str(), "wrong jsonrpc version");
+}
+
+TEST(error_method_not_found) {
+    auto* s = makeTestServer();
+    String init = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test"}}})";
+    s->_processJsonRpc(init);
+    String req = R"({"jsonrpc":"2.0","id":2,"method":"totally/made/up","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Method not found");
+}
+
+TEST(error_tool_not_found) {
+    auto* s = makeTestServer();
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nonexistent_xyz","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Tool not found");
+}
+
+TEST(error_parse_malformed_json) {
+    auto* s = makeTestServer();
+    String resp = s->_processJsonRpc("{not valid json!!!");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Parse error");
+}
+
+TEST(error_empty_body) {
+    auto* s = makeTestServer();
+    String resp = s->_processJsonRpc("");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Parse error");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-02-18
+
+### Added
+- **CAN Bus Tool** (`tools/MCPCANTool.h`) — Controller Area Network support for ESP32 via TWAI driver:
+  - `can_init` — initialize CAN bus with configurable bitrate (125K/250K/500K/1M) and mode (normal/listen-only/no-ack)
+  - `can_send` — send CAN frames with standard (11-bit) or extended (29-bit) IDs, RTR support
+  - `can_receive` — read pending frames from receive buffer with configurable timeout and max count
+  - `can_filter` — set acceptance filter for selective frame reception
+  - `can_status` — get bus status, error counters, bus-off state, message queue depths
+  - Proper MCP tool annotations (readOnly, destructive, title)
+  - `addCANTools(server, txPin, rxPin)` — single-call registration
+- **Rotary Encoder Tool** (`tools/MCPEncoderTool.h`) — hardware interrupt-driven encoder input:
+  - `encoder_read` — read position, idle time, button state, optional revolution/degree tracking
+  - `encoder_reset` — reset position to zero or specified value
+  - `encoder_config` — configure steps per revolution, min/max position limits
+  - Supports up to 4 simultaneous encoders via ISR multiplexing
+  - IRAM_ATTR ISR handlers for reliable counting at high speeds
+  - `addEncoderTools(server, pinA, pinB, pinButton)` — registration with auto-indexing
+- **Server Diagnostics Tool** (`MCPDiagnostics.h`) — comprehensive server self-inspection:
+  - `server_diagnostics` — version info, uptime, memory usage, network status, rate limiter stats, session summary
+  - Optional detailed listing of registered tools and resources
+  - Low-memory warning integration with HeapMonitor
+  - `addDiagnosticsTool(server)` — single-call registration
+- **Industrial CAN Bus Example** (`examples/industrial_canbus/`) — demonstrates:
+  - CAN bus monitoring with traffic logging ring buffer
+  - Rotary encoder for physical parameter adjustment
+  - Server diagnostics for remote health monitoring
+  - AI-driven CAN traffic analysis prompt
+  - Multi-operator session management
+- 15 new unit tests:
+  - CAN bus tools: status, send validation, receive empty (3)
+  - Encoder tools: read, reset, config (3)
+  - Diagnostics tool: basic output, version info (2)
+  - Batch JSON-RPC: all-notifications, mixed requests (2)
+  - Error handling: missing tool name, nonexistent tool, invalid version, method not found, tools_call missing name (5)
+
+### Changed
+- Bumped version to 0.12.0
+- Total tests: 149 → 164 unit tests + 15 HTTP integration tests = 179 total
+- `mcpd.h` now includes `MCPDiagnostics.h`
+- Built-in tools now total 49 (40 + 5 CAN + 3 encoder + 1 diagnostics)
+- README comparison table updated to reflect 49 built-in tools
+
 ## [0.11.0] - 2026-02-18
 
 ### Added

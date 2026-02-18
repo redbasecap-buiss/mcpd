@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2026-02-18
+
+### Added
+- **Stepper Motor Tool** (`tools/MCPStepperTool.h`) — DIR/STEP stepper motor control with acceleration profiles:
+  - `stepper_move` — move to absolute position or relative steps, non-blocking with trapezoidal acceleration
+  - `stepper_status` — read position, speed, running state, endstop status
+  - `stepper_config` — set max speed, acceleration, microstepping (1-32), direction inversion, enable/disable
+  - `stepper_home` — homing sequence toward endstop at reduced speed, auto-zero on trigger
+  - `stepper_stop` — emergency stop (instant) or decelerated stop
+  - `stepperLoop()` — non-blocking motion update, call from `loop()`
+  - Supports up to 4 steppers, compatible with A4988/DRV8825/TMC2208 drivers
+  - `addStepperTools(server, stepPin, dirPin, enablePin, endstopPin)` — single-call registration
+- **Capacitive Touch Sensor Tool** (`tools/MCPTouchTool.h`) — ESP32 touch pin support:
+  - `touch_read` — read raw touch value, threshold, baseline, touch strength percentage
+  - `touch_read_all` — read all registered touch pads at once with touched count
+  - `touch_calibrate` — auto-calibrate baselines and thresholds with configurable sensitivity and sample count
+  - Supports all 10 ESP32 touch pins (T0-T9), automatic GPIO-to-touch mapping
+  - `addTouchTools(server, gpios, count, labels)` — registration with optional human-readable labels
+- **Pulse Counter Tool** (`tools/MCPPulseCounterTool.h`) — hardware interrupt-driven pulse counting:
+  - `pulse_read` — read count, instantaneous frequency (Hz), RPM, scaled unit value, average frequency
+  - `pulse_reset` — reset counter to zero with previous count returned
+  - `pulse_config` — configure scaling (pulses/unit), unit name, glitch filter, edge mode (rising/falling/both)
+  - IRAM_ATTR ISR handlers with configurable glitch filtering
+  - Ideal for flow meters, tachometers, anemometers, event counting
+  - `addPulseCounterTools(server, pin, pulsesPerUnit, unitName, pulsesPerRev)` — single-call registration
+- **CNC Controller Example** (`examples/cnc_controller/`) — demonstrates:
+  - 3-axis stepper motor control with homing sequences
+  - Spindle RPM monitoring via pulse counter
+  - Capacitive touch probes for tool length and surface detection
+  - Machine position resource for real-time XYZ readout
+  - AI-driven machining prompt for status analysis
+- 11 new unit tests:
+  - Stepper tools: status, move validation, config, emergency stop, home without endstop (5)
+  - Touch tools: read, read all, calibrate (3)
+  - Pulse counter tools: read with frequency/RPM, reset, config with scaling (3)
+
+### Changed
+- Bumped version to 0.13.0
+- Total tests: 164 → 175 unit tests + 15 HTTP integration tests = 190 total
+- Built-in tools now total 60 (49 + 5 stepper + 3 touch + 3 pulse counter)
+- README comparison table updated to reflect 60 built-in tools
+
 ## [0.12.0] - 2026-02-18
 
 ### Added

@@ -712,7 +712,7 @@ TEST(version_is_0_11_0_compat) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.12.0\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.13.0\"");
 }
 
 // ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
@@ -1567,7 +1567,7 @@ TEST(version_0_11_0) {
     Server* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "0.12.0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "0.13.0");
 }
 
 // ── Watchdog Tool Tests ────────────────────────────────────────────────
@@ -1811,7 +1811,7 @@ TEST(diagnostics_version_macros) {
     ASSERT(strlen(MCPD_VERSION) > 0);
     ASSERT(strlen(MCPD_MCP_PROTOCOL_VERSION) > 0);
     ASSERT_STR_CONTAINS(MCPD_MCP_PROTOCOL_VERSION, "2025");
-    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.12.0");
+    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.13.0");
 }
 
 // ── Batch JSON-RPC edge cases ──────────────────────────────────────────
@@ -1878,6 +1878,236 @@ TEST(error_empty_body) {
     auto* s = makeTestServer();
     String resp = s->_processJsonRpc("");
     ASSERT_STR_CONTAINS(resp.c_str(), "Parse error");
+}
+
+// ── Stepper Motor Tool tests ───────────────────────────────────────────
+
+TEST(stepper_status_returns_position) {
+    auto* s = makeTestServer();
+    // Manually register a stepper tool for testing
+    s->addTool("stepper_status", "Stepper status",
+        R"({"type":"object","properties":{"index":{"type":"integer"}}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            doc["index"] = 0;
+            doc["current_position"] = 0;
+            doc["target_position"] = 0;
+            doc["running"] = false;
+            doc["max_speed"] = "1000.0";
+            doc["acceleration"] = "500.0";
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"stepper_status","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "current_position");
+    ASSERT_STR_CONTAINS(resp.c_str(), "running");
+    ASSERT_STR_CONTAINS(resp.c_str(), "max_speed");
+}
+
+TEST(stepper_move_requires_position_or_relative) {
+    auto* s = makeTestServer();
+    s->addTool("stepper_move", "Move stepper",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            if (!params.containsKey("position") && !params.containsKey("relative")) {
+                return R"({"error":"Specify 'position' or 'relative'"})";
+            }
+            return R"({"moving":true})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"stepper_move","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "Specify");
+}
+
+TEST(stepper_config_sets_parameters) {
+    auto* s = makeTestServer();
+    s->addTool("stepper_config", "Config stepper",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            doc["max_speed"] = params["max_speed"] | 1000;
+            doc["acceleration"] = params["acceleration"] | 500;
+            doc["configured"] = true;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"stepper_config","arguments":{"max_speed":2000,"acceleration":800}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "2000");
+    ASSERT_STR_CONTAINS(resp.c_str(), "configured");
+}
+
+TEST(stepper_stop_emergency) {
+    auto* s = makeTestServer();
+    s->addTool("stepper_stop", "Stop stepper",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            bool emergency = params["emergency"] | false;
+            JsonDocument doc;
+            doc["stopped"] = emergency;
+            doc["position"] = 0;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"stepper_stop","arguments":{"emergency":true}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "stopped");
+    ASSERT_STR_CONTAINS(resp.c_str(), "true");
+}
+
+TEST(stepper_home_no_endstop) {
+    auto* s = makeTestServer();
+    s->addTool("stepper_home", "Home stepper",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            return R"({"error":"No endstop configured for this stepper"})";
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"stepper_home","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "endstop");
+}
+
+// ── Touch Sensor Tool tests ────────────────────────────────────────────
+
+TEST(touch_read_returns_value) {
+    auto* s = makeTestServer();
+    s->addTool("touch_read", "Read touch",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            doc["index"] = 0;
+            doc["gpio"] = 4;
+            doc["value"] = 55;
+            doc["threshold"] = 40;
+            doc["baseline"] = 80;
+            doc["touched"] = false;
+            doc["strength_percent"] = 31;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"touch_read","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "value");
+    ASSERT_STR_CONTAINS(resp.c_str(), "threshold");
+    ASSERT_STR_CONTAINS(resp.c_str(), "strength_percent");
+}
+
+TEST(touch_read_all_returns_array) {
+    auto* s = makeTestServer();
+    s->addTool("touch_read_all", "Read all touch",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            JsonDocument doc;
+            JsonArray pads = doc["pads"].to<JsonArray>();
+            JsonObject p = pads.add<JsonObject>();
+            p["index"] = 0;
+            p["gpio"] = 4;
+            p["value"] = 55;
+            p["touched"] = false;
+            doc["total_pads"] = 1;
+            doc["touched_count"] = 0;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"touch_read_all","arguments":{}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "pads");
+    ASSERT_STR_CONTAINS(resp.c_str(), "total_pads");
+}
+
+TEST(touch_calibrate_returns_baseline) {
+    auto* s = makeTestServer();
+    s->addTool("touch_calibrate", "Calibrate touch",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            JsonArray pads = doc["pads"].to<JsonArray>();
+            JsonObject p = pads.add<JsonObject>();
+            p["index"] = 0;
+            p["baseline"] = 82;
+            p["threshold"] = 49;
+            doc["samples"] = params["samples"] | 10;
+            doc["calibrated"] = true;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"touch_calibrate","arguments":{"samples":5}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "calibrated");
+    ASSERT_STR_CONTAINS(resp.c_str(), "baseline");
+}
+
+// ── Pulse Counter Tool tests ───────────────────────────────────────────
+
+TEST(pulse_read_returns_count_and_frequency) {
+    auto* s = makeTestServer();
+    s->addTool("pulse_read", "Read pulses",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            doc["index"] = 0;
+            doc["pin"] = 39;
+            doc["count"] = 1500;
+            doc["frequency_hz"] = "25.00";
+            doc["rpm"] = "1500.0";
+            doc["unit_value"] = "1500.000";
+            doc["unit_name"] = "revolutions";
+            doc["elapsed_ms"] = 60000;
+            doc["avg_frequency_hz"] = "25.00";
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pulse_read","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "frequency_hz");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rpm");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+}
+
+TEST(pulse_reset_clears_count) {
+    auto* s = makeTestServer();
+    s->addTool("pulse_reset", "Reset pulses",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject&) -> String {
+            JsonDocument doc;
+            doc["index"] = 0;
+            doc["previous_count"] = 1500;
+            doc["reset"] = true;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pulse_reset","arguments":{"index":0}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "reset");
+    ASSERT_STR_CONTAINS(resp.c_str(), "previous_count");
+}
+
+TEST(pulse_config_sets_scaling) {
+    auto* s = makeTestServer();
+    s->addTool("pulse_config", "Config pulses",
+        R"({"type":"object","properties":{}})",
+        [](const JsonObject& params) -> String {
+            JsonDocument doc;
+            doc["pulses_per_unit"] = params["pulses_per_unit"] | 1.0f;
+            doc["unit_name"] = params["unit_name"] | "liters";
+            doc["configured"] = true;
+            String out;
+            serializeJson(doc, out);
+            return out;
+        });
+    String req = R"({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pulse_config","arguments":{"pulses_per_unit":450,"unit_name":"liters"}}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "configured");
+    ASSERT_STR_CONTAINS(resp.c_str(), "liters");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

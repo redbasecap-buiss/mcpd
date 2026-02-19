@@ -27,7 +27,7 @@ public:
         server.addTool("spi_transfer",
             "Transfer bytes over SPI bus. Sends data and returns received bytes simultaneously. "
             "Use csPin to automatically assert/deassert chip select.",
-            R"({
+            R"=({
                 "type": "object",
                 "properties": {
                     "bytes": {
@@ -59,7 +59,7 @@ public:
                     }
                 },
                 "required": ["bytes"]
-            })",
+            })=",
             [&spi](const JsonObject& args) -> String {
                 JsonArray txBytes = args["bytes"];
                 int csPin = args["csPin"] | -1;
@@ -72,7 +72,7 @@ public:
                 // Limit transfer size for MCU memory
                 size_t count = txBytes.size();
                 if (count > 256) {
-                    return R"({"error":"Transfer too large (max 256 bytes)"})";
+                    return R"=({"error":"Transfer too large (max 256 bytes)"})=";
                 }
 
                 // Configure and begin
@@ -111,7 +111,7 @@ public:
         // spi_config — configure SPI bus parameters
         server.addTool("spi_config",
             "Initialize and configure the SPI bus. Call before spi_transfer if using non-default pins.",
-            R"({
+            R"=({
                 "type": "object",
                 "properties": {
                     "frequency": {
@@ -132,7 +132,7 @@ public:
                         "description": "MISO pin (platform-specific, omit for default)"
                     }
                 }
-            })",
+            })=",
             [&spi](const JsonObject& args) -> String {
                 uint32_t freq = args["frequency"] | 1000000;
 

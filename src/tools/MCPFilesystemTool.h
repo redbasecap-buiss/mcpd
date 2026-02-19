@@ -37,7 +37,7 @@ public:
 
         // fs_list — List files
         MCPTool listTool("fs_list", "List files in a directory on the MCU filesystem",
-            R"({"type":"object","properties":{"path":{"type":"string","description":"Directory path (default: /)"}},"required":[]})",
+            R"=({"type":"object","properties":{"path":{"type":"string","description":"Directory path (default: /)"}},"required":[]})=",
             [](const JsonObject& args) -> String {
                 String path = "/";
                 if (args.containsKey("path")) {
@@ -76,7 +76,7 @@ public:
 
         // fs_read — Read file
         MCPTool readTool("fs_read", "Read contents of a file from the MCU filesystem",
-            R"({"type":"object","properties":{"path":{"type":"string","description":"File path to read"},"maxBytes":{"type":"integer","description":"Maximum bytes to read (default: 4096)"}},"required":["path"]})",
+            R"=({"type":"object","properties":{"path":{"type":"string","description":"File path to read"},"maxBytes":{"type":"integer","description":"Maximum bytes to read (default: 4096)"}},"required":["path"]})=",
             [](const JsonObject& args) -> String {
                 const char* path = args["path"].as<const char*>();
                 if (!path) return "Error: missing path";
@@ -119,7 +119,7 @@ public:
 
         // fs_write — Write file
         MCPTool writeTool("fs_write", "Write content to a file on the MCU filesystem",
-            R"({"type":"object","properties":{"path":{"type":"string","description":"File path to write"},"content":{"type":"string","description":"Content to write"},"append":{"type":"boolean","description":"Append to file instead of overwriting (default: false)"}},"required":["path","content"]})",
+            R"=({"type":"object","properties":{"path":{"type":"string","description":"File path to write"},"content":{"type":"string","description":"Content to write"},"append":{"type":"boolean","description":"Append to file instead of overwriting (default: false)"}},"required":["path","content"]})=",
             [](const JsonObject& args) -> String {
                 const char* path = args["path"].as<const char*>();
                 const char* content = args["content"].as<const char*>();

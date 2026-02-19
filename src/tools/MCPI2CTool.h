@@ -42,9 +42,9 @@ public:
         // i2c_read
         server.addTool("i2c_read",
             "Read bytes from an I2C device",
-            R"({"type":"object","properties":{"address":{"type":"integer","description":"I2C device address (decimal)"},"count":{"type":"integer","description":"Number of bytes to read (max 32)","default":1}},"required":["address"]})",
+            R"=({"type":"object","properties":{"address":{"type":"integer","description":"I2C device address (decimal)"},"count":{"type":"integer","description":"Number of bytes to read (max 32)","default":1}},"required":["address"]})=",
             [&wire](const JsonObject& args) -> String {
-                uint8_t addr = args["address"];
+                uint8_t addr = args["address"].as<uint8_t>();
                 int count = args["count"] | 1;
                 if (count > 32) count = 32;
 
@@ -67,9 +67,9 @@ public:
         // i2c_write
         server.addTool("i2c_write",
             "Write bytes to an I2C device",
-            R"({"type":"object","properties":{"address":{"type":"integer","description":"I2C device address (decimal)"},"bytes":{"type":"array","items":{"type":"integer"},"description":"Bytes to write"}},"required":["address","bytes"]})",
+            R"=({"type":"object","properties":{"address":{"type":"integer","description":"I2C device address (decimal)"},"bytes":{"type":"array","items":{"type":"integer"},"description":"Bytes to write"}},"required":["address","bytes"]})=",
             [&wire](const JsonObject& args) -> String {
-                uint8_t addr = args["address"];
+                uint8_t addr = args["address"].as<uint8_t>();
                 JsonArray bytes = args["bytes"];
 
                 wire.beginTransmission(addr);

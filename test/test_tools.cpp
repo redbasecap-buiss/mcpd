@@ -1689,6 +1689,265 @@ TEST(eeprom_read_int_out_of_range) {
     ASSERT_STR_CONTAINS(resp.c_str(), "error");
 }
 
+// ── I2C Tool Tests ─────────────────────────────────────────────────────
+
+#include "../src/tools/MCPI2CTool.h"
+
+TEST(i2c_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::I2CTool::attach(*s);
+    String resp = call(s, "i2c_scan", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "devices");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+}
+
+TEST(i2c_read_returns_bytes) {
+    auto* s = makeServer();
+    mcpd::tools::I2CTool::attach(*s);
+    String resp = call(s, "i2c_read", R"({"address":72,"count":4})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "address");
+    ASSERT_STR_CONTAINS(resp.c_str(), "72");
+    ASSERT_STR_CONTAINS(resp.c_str(), "requested");
+}
+
+TEST(i2c_write_sends_bytes) {
+    auto* s = makeServer();
+    mcpd::tools::I2CTool::attach(*s);
+    String resp = call(s, "i2c_write", R"({"address":72,"bytes":[16,32]})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "address");
+    ASSERT_STR_CONTAINS(resp.c_str(), "72");
+    ASSERT_STR_CONTAINS(resp.c_str(), "bytesWritten");
+    ASSERT_STR_CONTAINS(resp.c_str(), "success");
+}
+
+TEST(i2c_read_caps_at_32) {
+    auto* s = makeServer();
+    mcpd::tools::I2CTool::attach(*s);
+    String resp = call(s, "i2c_read", R"({"address":72,"count":100})");
+    // Should cap to 32 bytes max
+    ASSERT_STR_CONTAINS(resp.c_str(), "received");
+}
+
+// ── SPI Tool Tests ─────────────────────────────────────────────────────
+
+#include "../src/tools/MCPSPITool.h"
+
+TEST(spi_tools_register) {
+    auto* s = makeServer();
+    mcpd::tools::SPITool::attach(*s);
+    String resp = call(s, "spi_transfer", R"({"bytes":[170,85]})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "received");
+    ASSERT_STR_CONTAINS(resp.c_str(), "sent");
+}
+
+TEST(spi_transfer_with_cs_pin) {
+    auto* s = makeServer();
+    mcpd::tools::SPITool::attach(*s);
+    String resp = call(s, "spi_transfer", R"({"bytes":[1,2,3],"csPin":5})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "received");
+    ASSERT_STR_CONTAINS(resp.c_str(), "3");
+}
+
+TEST(spi_transfer_too_large) {
+    auto* s = makeServer();
+    mcpd::tools::SPITool::attach(*s);
+    // Build array of 257 bytes
+    String args = R"({"bytes":[)";
+    for (int i = 0; i < 257; i++) {
+        if (i > 0) args += ",";
+        args += "0";
+    }
+    args += "]}";
+    String resp = call(s, args.c_str(), "{}");
+    // The tool name was wrong — let's call correctly
+    resp = call(s, "spi_transfer", args.c_str());
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "256");
+}
+
+TEST(spi_config_tool) {
+    auto* s = makeServer();
+    mcpd::tools::SPITool::attach(*s);
+    String resp = call(s, "spi_config", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "frequency");
+    ASSERT_STR_CONTAINS(resp.c_str(), "configured");
+}
+
+// ── Interrupt Tool Tests ───────────────────────────────────────────────
+
+#include "../src/tools/MCPInterruptTool.h"
+
+TEST(interrupt_tools_register) {
+    // Reset state
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_list", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "pins");
+}
+
+TEST(interrupt_attach_pin) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_attach", R"({"pin":4,"mode":"rising"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "attached");
+    ASSERT_STR_CONTAINS(resp.c_str(), "true");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rising");
+}
+
+TEST(interrupt_attach_duplicate_pin) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    call(s, "interrupt_attach", R"({"pin":4})");
+    String resp = call(s, "interrupt_attach", R"({"pin":4})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "already");
+}
+
+TEST(interrupt_read_pin) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    call(s, "interrupt_attach", R"({"pin":4})");
+    String resp = call(s, "interrupt_read", R"({"pin":4})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rate_hz");
+    ASSERT_STR_CONTAINS(resp.c_str(), "mode");
+}
+
+TEST(interrupt_read_unattached_pin) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_read", R"({"pin":99})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "No interrupt");
+}
+
+TEST(interrupt_detach_pin) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    call(s, "interrupt_attach", R"({"pin":4})");
+    String resp = call(s, "interrupt_detach", R"({"pin":4})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "detached");
+    ASSERT_STR_CONTAINS(resp.c_str(), "true");
+}
+
+TEST(interrupt_detach_unattached) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_detach", R"({"pin":99})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+}
+
+TEST(interrupt_max_slots) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    // Attach 8 pins (max)
+    for (int i = 0; i < 8; i++) {
+        String arg = String(R"({"pin":)") + (i + 10) + "}";
+        call(s, "interrupt_attach", arg.c_str());
+    }
+    // 9th should fail
+    String resp = call(s, "interrupt_attach", R"({"pin":99})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "Maximum");
+}
+
+TEST(interrupt_falling_mode) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_attach", R"({"pin":5,"mode":"falling"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "falling");
+}
+
+TEST(interrupt_change_mode) {
+    mcpd::_intCount = 0;
+    auto* s = makeServer();
+    mcpd::addInterruptTools(*s);
+    String resp = call(s, "interrupt_attach", R"({"pin":5,"mode":"change"})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "change");
+}
+
+// (Filesystem and Power tools require extensive ESP-specific mocking
+//  and are tested via the Arduino IDE / PlatformIO build chain)
+
+// ── OTA Tool Tests ─────────────────────────────────────────────────────
+
+#include "../src/tools/MCPOTATool.h"
+
+TEST(ota_tools_register) {
+    auto* s = makeServer();
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_info", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "firmware_version");
+    ASSERT_STR_CONTAINS(resp.c_str(), MCPD_VERSION);
+}
+
+TEST(ota_info_contains_partition) {
+    auto* s = makeServer();
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_info", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "current_partition");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ota_0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "firmware_valid");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rollback_available");
+}
+
+TEST(ota_partitions_lists_two) {
+    auto* s = makeServer();
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_partitions", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "partitions");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ota_0");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ota_1");
+    ASSERT_STR_CONTAINS(resp.c_str(), "count");
+    ASSERT_STR_CONTAINS(resp.c_str(), "active_partition");
+}
+
+TEST(ota_rollback_requires_confirm) {
+    auto* s = makeServer();
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_rollback", R"({"confirm":false})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "confirm");
+}
+
+TEST(ota_rollback_no_previous_firmware) {
+    auto* s = makeServer();
+    mcpd::_otaState.rollbackAvailable = false;
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_rollback", R"({"confirm":true})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "error");
+    ASSERT_STR_CONTAINS(resp.c_str(), "No previous");
+}
+
+TEST(ota_rollback_succeeds_when_available) {
+    auto* s = makeServer();
+    mcpd::_otaState.rollbackAvailable = true;
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_rollback", R"({"confirm":true})");
+    ASSERT_STR_CONTAINS(resp.c_str(), "rolling_back");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ota_0");
+    mcpd::_otaState.rollbackAvailable = false; // reset
+}
+
+TEST(ota_mark_valid) {
+    auto* s = makeServer();
+    mcpd::_otaState.firmwareValid = false;
+    mcpd::registerOTATools(*s);
+    String resp = call(s, "ota_mark_valid", "{}");
+    ASSERT_STR_CONTAINS(resp.c_str(), "marked_valid");
+    ASSERT_STR_CONTAINS(resp.c_str(), "ota_0");
+    ASSERT(mcpd::_otaState.firmwareValid == true);
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {

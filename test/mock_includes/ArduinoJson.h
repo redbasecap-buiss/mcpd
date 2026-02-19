@@ -426,6 +426,16 @@ template<> inline unsigned long JsonVariant::as<unsigned long>() const {
     return (unsigned long)as<long>();
 }
 
+template<> inline uint8_t JsonVariant::as<uint8_t>() const {
+    return (uint8_t)as<int>();
+}
+
+template<> inline uint16_t JsonVariant::as<uint16_t>() const {
+    return (uint16_t)as<int>();
+}
+
+// uint32_t = unsigned int on most platforms, see as<unsigned int> below
+
 template<> inline float JsonVariant::as<float>() const {
     if (!_node) return 0;
     if (_node->type == JsonNodeType::Float) return (float)_node->doubleVal;

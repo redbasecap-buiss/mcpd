@@ -353,6 +353,7 @@ mcpd ships with optional built-in tools:
 | **I2C** | `i2c_scan`, `i2c_read`, `i2c_write` | — |
 | **MQTT** | `mqtt_connect`, `mqtt_publish`, `mqtt_subscribe`, `mqtt_messages`, `mqtt_status` | PubSubClient |
 | **System** | `system_info` (heap, uptime, chip) | — |
+| **OTA** | `ota_info`, `ota_partitions`, `ota_rollback`, `ota_mark_valid` | — |
 
 ```cpp
 #include <tools/MCPGPIOTool.h>

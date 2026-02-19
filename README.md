@@ -33,7 +33,7 @@
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
 | MCP spec compliant | ✅ 2025-03-26 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 359 tests | ❌ self-described | N/A |
+| Actually compiles | ✅ 462 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
@@ -421,8 +421,9 @@ Test on macOS/Linux **without any hardware**:
 make test
 ```
 
-- **37 unit tests** — JSON-RPC parsing, dispatch, error handling, batch requests, prompts, logging, pagination
-- **15 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server
+- **222 JSON-RPC tests** — Protocol parsing, dispatch, error handling, batch requests, prompts, logging, pagination
+- **202 tool tests** — All built-in tools: GPIO, PWM, Servo, NeoPixel, DHT, I2C, SPI, ADC, UART, CAN, Modbus, LoRa, camera, ESP-NOW, and more
+- **38 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server: full lifecycle, CORS, prompts, completion, subscriptions, concurrency
 
 ## Roadmap
 

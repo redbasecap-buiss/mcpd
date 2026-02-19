@@ -79,6 +79,37 @@ public:
 
         mcp->addResource("device://info", "Device Info", "System info", "application/json",
             []() -> String { return "{\"model\":\"ESP32-MOCK\",\"heap\":200000}"; });
+
+        // Add a prompt for testing
+        mcp->addPrompt("greet", "Generate a greeting",
+            {MCPPromptArgument("name", "Name to greet", true),
+             MCPPromptArgument("style", "Greeting style", false)},
+            [](const std::map<String, String>& args) -> std::vector<MCPPromptMessage> {
+                String name = "world";
+                auto it = args.find("name");
+                if (it != args.end()) name = it->second;
+                return {MCPPromptMessage("user", (String("Hello, ") + name + "!").c_str())};
+            });
+
+        // Add a resource template for testing
+        mcp->addResourceTemplate("sensor://{id}/reading", "Sensor Reading",
+            "Read a sensor value", "application/json",
+            [](const std::map<String, String>& vars) -> String {
+                auto it = vars.find("id");
+                String id = (it != vars.end()) ? it->second : "unknown";
+                return String("{\"sensor\":\"") + id + "\",\"value\":42}";
+            });
+
+        // Add completion provider
+        mcp->_completions.addPromptCompletion("greet", "name",
+            [](const String& /*arg*/, const String& partial) -> std::vector<String> {
+                std::vector<String> all = {"Alice", "Bob", "Charlie"};
+                std::vector<String> result;
+                for (const auto& s : all) {
+                    if (partial.length() == 0 || s.startsWith(partial)) result.push_back(s);
+                }
+                return result;
+            });
     }
 
     ~PosixMCPServer() {
@@ -516,6 +547,190 @@ void test_empty_body() {
     ASSERT_EQ(r.status, 400);
 }
 
+void test_options_cors() {
+    auto r = httpRequest("OPTIONS", PORT, "/mcp");
+    ASSERT_EQ(r.status, 204);
+    ASSERT(r.headers.count("access-control-allow-methods") > 0);
+    ASSERT_STR_CONTAINS(r.headers["access-control-allow-methods"], "POST");
+}
+
+void test_prompts_list() {
+    auto r = httpRequest("POST", PORT, "/mcp", jsonRpc("prompts/list", "{}", 40));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "greet");
+    ASSERT_STR_CONTAINS(r.body, "name");
+    ASSERT_STR_CONTAINS(r.body, "required");
+}
+
+void test_prompts_get() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("prompts/get", R"({"name":"greet","arguments":{"name":"Alice"}})", 41));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "Hello, Alice!");
+    ASSERT_STR_CONTAINS(r.body, "messages");
+    ASSERT_STR_CONTAINS(r.body, "user");
+}
+
+void test_prompts_get_not_found() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("prompts/get", R"({"name":"nonexistent"})", 42));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Prompt not found");
+}
+
+void test_prompts_get_missing_required() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("prompts/get", R"({"name":"greet","arguments":{}})", 43));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Missing required argument");
+}
+
+void test_resource_templates_list() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/templates/list", "{}", 50));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "sensor://{id}/reading");
+    ASSERT_STR_CONTAINS(r.body, "Sensor Reading");
+}
+
+void test_logging_set_level() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("logging/setLevel", R"({"level":"warning"})", 60));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "result");
+}
+
+void test_logging_set_level_missing() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("logging/setLevel", R"({})", 61));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Missing level");
+}
+
+void test_completion_complete() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("completion/complete",
+            R"({"ref":{"type":"ref/prompt","name":"greet"},"argument":{"name":"name","value":"A"}})", 70));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "Alice");
+    ASSERT_STR_CONTAINS(r.body, "completion");
+}
+
+void test_completion_missing_ref() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("completion/complete", R"({})", 71));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Missing ref");
+}
+
+void test_resource_subscribe() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/subscribe", R"({"uri":"device://info"})", 80));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "result");
+}
+
+void test_resource_unsubscribe() {
+    // Subscribe first
+    httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/subscribe", R"({"uri":"device://info"})", 81));
+    // Then unsubscribe
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/unsubscribe", R"({"uri":"device://info"})", 82));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "result");
+}
+
+void test_resource_subscribe_missing_uri() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/subscribe", R"({})", 83));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Missing resource URI");
+}
+
+void test_roots_list() {
+    auto r = httpRequest("POST", PORT, "/mcp", jsonRpc("roots/list", "{}", 90));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "result");
+}
+
+void test_tools_call_missing_name() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("tools/call", R"({"arguments":{}})", 100));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "Missing tool name");
+}
+
+void test_resources_read_not_found() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        jsonRpc("resources/read", R"({"uri":"device://nonexistent"})", 101));
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+}
+
+void test_invalid_jsonrpc_version() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        R"({"jsonrpc":"1.0","id":1,"method":"ping"})");
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+    ASSERT_STR_CONTAINS(r.body, "-32600");
+}
+
+void test_missing_method() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        R"({"jsonrpc":"2.0","id":1})");
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "error");
+}
+
+void test_batch_with_notification() {
+    std::string batch = R"([{"jsonrpc":"2.0","method":"notifications/initialized"},{"jsonrpc":"2.0","id":110,"method":"ping"}])";
+    auto r = httpRequest("POST", PORT, "/mcp", batch);
+    ASSERT_EQ(r.status, 200);
+    ASSERT_STR_CONTAINS(r.body, "\"id\":110");
+}
+
+void test_get_method_not_allowed() {
+    auto r = httpRequest("GET", PORT, "/mcp");
+    ASSERT_EQ(r.status, 405);
+}
+
+void test_concurrent_requests() {
+    // Send multiple requests in quick succession
+    std::vector<HttpResponse> responses(5);
+    std::vector<std::thread> threads;
+    for (int i = 0; i < 5; i++) {
+        threads.emplace_back([&responses, i]() {
+            responses[i] = httpRequest("POST", PORT, "/mcp",
+                jsonRpc("ping", "{}", 200 + i));
+        });
+    }
+    for (auto& t : threads) t.join();
+    for (int i = 0; i < 5; i++) {
+        ASSERT_EQ(responses[i].status, 200);
+        ASSERT_STR_CONTAINS(responses[i].body, "result");
+    }
+}
+
+void test_cancellation_notification() {
+    auto r = httpRequest("POST", PORT, "/mcp",
+        R"({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"req-999"}})");
+    ASSERT_EQ(r.status, 202);
+}
+
+void test_content_type_json() {
+    auto r = httpRequest("POST", PORT, "/mcp", jsonRpc("ping", "{}", 300));
+    ASSERT_EQ(r.status, 200);
+    ASSERT(r.headers.count("content-type") > 0);
+    ASSERT_STR_CONTAINS(r.headers["content-type"], "application/json");
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 int main() {
@@ -541,6 +756,29 @@ int main() {
     RUN_TEST(cors_headers);
     RUN_TEST(session_lifecycle);
     RUN_TEST(empty_body);
+    RUN_TEST(options_cors);
+    RUN_TEST(prompts_list);
+    RUN_TEST(prompts_get);
+    RUN_TEST(prompts_get_not_found);
+    RUN_TEST(prompts_get_missing_required);
+    RUN_TEST(resource_templates_list);
+    RUN_TEST(logging_set_level);
+    RUN_TEST(logging_set_level_missing);
+    RUN_TEST(completion_complete);
+    RUN_TEST(completion_missing_ref);
+    RUN_TEST(resource_subscribe);
+    RUN_TEST(resource_unsubscribe);
+    RUN_TEST(resource_subscribe_missing_uri);
+    RUN_TEST(roots_list);
+    RUN_TEST(tools_call_missing_name);
+    RUN_TEST(resources_read_not_found);
+    RUN_TEST(invalid_jsonrpc_version);
+    RUN_TEST(missing_method);
+    RUN_TEST(batch_with_notification);
+    RUN_TEST(get_method_not_allowed);
+    RUN_TEST(concurrent_requests);
+    RUN_TEST(cancellation_notification);
+    RUN_TEST(content_type_json);
 
     printf("\n  ────────────────────────────────────────\n");
     printf("  Results: %d/%d passed", tests_passed, tests_run);

@@ -712,7 +712,7 @@ TEST(version_is_0_11_0_compat) {
     auto* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":250,"method":"initialize","params":{}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.27.3\"");
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"version\":\"0.27.4\"");
 }
 
 // ── v0.6.0 Tests: Tool Annotations ────────────────────────────────────
@@ -1567,7 +1567,7 @@ TEST(version_0_11_0) {
     Server* s = makeTestServer();
     String req = R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})";
     String resp = s->_processJsonRpc(req);
-    ASSERT_STR_CONTAINS(resp.c_str(), "0.27.3");
+    ASSERT_STR_CONTAINS(resp.c_str(), "0.27.4");
 }
 
 // ── Watchdog Tool Tests ────────────────────────────────────────────────
@@ -1811,7 +1811,7 @@ TEST(diagnostics_version_macros) {
     ASSERT(strlen(MCPD_VERSION) > 0);
     ASSERT(strlen(MCPD_MCP_PROTOCOL_VERSION) > 0);
     ASSERT_STR_CONTAINS(MCPD_MCP_PROTOCOL_VERSION, "2025");
-    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.27.3");
+    ASSERT_STR_CONTAINS(MCPD_VERSION, "0.27.4");
 }
 
 // ── Batch JSON-RPC edge cases ──────────────────────────────────────────
@@ -2822,6 +2822,59 @@ TEST(relay_interlock_concept) {
     String resp = s->_processJsonRpc(req);
     ASSERT_STR_CONTAINS(resp.c_str(), "cooler");
     ASSERT_STR_CONTAINS(resp.c_str(), "heater turned OFF");
+}
+
+// ── Remove Prompt/Root/ResourceTemplate Tests ──────────────────────────
+
+TEST(remove_prompt_by_name) {
+    auto* s = makeTestServer();
+    // Server already has "greet" prompt from makeTestServer
+    ASSERT(s->removePrompt("greet") == true);
+    String req = R"({"jsonrpc":"2.0","id":900,"method":"prompts/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"prompts\":[]");
+}
+
+TEST(remove_prompt_nonexistent) {
+    auto* s = makeTestServer();
+    ASSERT(s->removePrompt("no_such_prompt") == false);
+}
+
+TEST(remove_prompt_idempotent) {
+    auto* s = makeTestServer();
+    ASSERT(s->removePrompt("greet") == true);
+    ASSERT(s->removePrompt("greet") == false);
+}
+
+TEST(remove_root_by_uri) {
+    auto* s = makeTestServer();
+    s->addRoot("file:///workspace", "Workspace");
+    s->addRoot("file:///config", "Config");
+    ASSERT(s->removeRoot("file:///workspace") == true);
+    String req = R"({"jsonrpc":"2.0","id":910,"method":"roots/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_NOT_CONTAINS(resp.c_str(), "workspace");
+    ASSERT_STR_CONTAINS(resp.c_str(), "config");
+}
+
+TEST(remove_root_nonexistent) {
+    auto* s = makeTestServer();
+    ASSERT(s->removeRoot("file:///nope") == false);
+}
+
+TEST(remove_resource_template_by_uri) {
+    auto* s = makeTestServer();
+    s->addResourceTemplate("sensor://{id}/reading", "Sensor", "Read sensor", "application/json",
+        [](const std::map<String, String>&) -> String { return "{}"; });
+    ASSERT(s->removeResourceTemplate("sensor://{id}/reading") == true);
+    String req = R"({"jsonrpc":"2.0","id":920,"method":"resources/templates/list","params":{}})";
+    String resp = s->_processJsonRpc(req);
+    ASSERT_STR_CONTAINS(resp.c_str(), "\"resourceTemplates\":[]");
+}
+
+TEST(remove_resource_template_nonexistent) {
+    auto* s = makeTestServer();
+    ASSERT(s->removeResourceTemplate("nope://{x}") == false);
 }
 
 // ── Main ───────────────────────────────────────────────────────────────

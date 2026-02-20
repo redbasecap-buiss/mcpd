@@ -102,6 +102,36 @@ bool Server::removeResource(const char* uri) {
     return false;
 }
 
+bool Server::removeResourceTemplate(const char* uriTemplate) {
+    for (auto it = _resourceTemplates.begin(); it != _resourceTemplates.end(); ++it) {
+        if (it->uriTemplate == uriTemplate) {
+            _resourceTemplates.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Server::removePrompt(const char* name) {
+    for (auto it = _prompts.begin(); it != _prompts.end(); ++it) {
+        if (it->name == name) {
+            _prompts.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Server::removeRoot(const char* uri) {
+    for (auto it = _roots.begin(); it != _roots.end(); ++it) {
+        if (it->uri == uri) {
+            _roots.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
 void Server::notifyToolsChanged() {
     JsonDocument doc;
     doc["jsonrpc"] = "2.0";

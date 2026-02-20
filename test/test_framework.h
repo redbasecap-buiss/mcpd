@@ -50,6 +50,13 @@ static int _tests_failed = 0;
             throw "String does not contain: " #needle; \
     } while(0)
 
+#define ASSERT_STR_NOT_CONTAINS(haystack, needle) \
+    do { \
+        std::string _h(haystack); \
+        if (_h.find(needle) != std::string::npos) \
+            throw "String unexpectedly contains: " #needle; \
+    } while(0)
+
 #define TEST_SUMMARY() \
     do { \
         printf("\n  ────────────────────────────────────────\n"); \

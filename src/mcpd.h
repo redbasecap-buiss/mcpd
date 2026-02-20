@@ -42,7 +42,7 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.27.3"
+#define MCPD_VERSION "0.27.4"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -301,6 +301,21 @@ public:
      * Remove a resource by URI. Returns true if found and removed.
      */
     bool removeResource(const char* uri);
+
+    /**
+     * Remove a resource template by URI template. Returns true if found and removed.
+     */
+    bool removeResourceTemplate(const char* uriTemplate);
+
+    /**
+     * Remove a prompt by name. Returns true if found and removed.
+     */
+    bool removePrompt(const char* name);
+
+    /**
+     * Remove a root by URI. Returns true if found and removed.
+     */
+    bool removeRoot(const char* uri);
 
 #ifdef MCPD_TEST
 public:  // Allow test access to internals

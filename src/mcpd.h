@@ -18,6 +18,7 @@
 #include <functional>
 #include <vector>
 #include <map>
+#include <set>
 
 #include "MCPTool.h"
 #include "MCPResource.h"
@@ -41,7 +42,7 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.27.2"
+#define MCPD_VERSION "0.27.3"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -349,8 +350,8 @@ private:
     // Pending notifications to send
     std::vector<String> _pendingNotifications;
 
-    // Resource subscriptions: URI → subscribed
-    std::vector<String> _subscribedResources;
+    // Resource subscriptions: set of subscribed URIs (O(log n) lookup)
+    std::set<String> _subscribedResources;
 
     // ── JSON-RPC dispatch ──────────────────────────────────────────────
 

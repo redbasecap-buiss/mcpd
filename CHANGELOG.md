@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.3] - 2026-02-20
+
+### Tests
+- Added **38 new session management tests** (`test_session.cpp`):
+  - Session creation: unique IDs, client name storage, initialized flag, timestamps
+  - Session validation: existing/nonexistent/empty IDs, touch-on-validate
+  - Session removal: single/double remove, count reduction
+  - Session limits & eviction: max limit enforcement, unlimited mode, oldest-idle eviction
+  - Timeout & pruning: default 30min timeout, custom timeout, prune behavior
+  - Session diagnostics: summary output with active sessions and metadata
+  - Session struct: default/parameterized constructors, touch/ageMs/idleMs
+  - Edge cases: empty/long client names, create-after-remove, single-slot eviction, hex ID format
+- **Total: 820 tests** (782 → 820)
+
+### Improvements
+- **Resource subscriptions**: Replaced `std::vector` linear search with `std::set` for O(log n) subscribe/unsubscribe/lookup
+- **CORS headers**: Added `Authorization` and `X-API-Key` to `Access-Control-Allow-Headers` for browser-based auth flows
+- Version sync across library.json, library.properties
+
 ## [0.27.2] - 2026-02-20
 
 ### Tests

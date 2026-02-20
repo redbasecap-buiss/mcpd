@@ -947,15 +947,8 @@ String Server::_handleResourcesSubscribe(JsonVariant params, JsonVariant id) {
         return _jsonRpcError(id, -32602, "Missing resource URI");
     }
 
-    // Add to subscriptions if not already present
-    String uriStr(uri);
-    bool found = false;
-    for (const auto& sub : _subscribedResources) {
-        if (sub == uriStr) { found = true; break; }
-    }
-    if (!found) {
-        _subscribedResources.push_back(uriStr);
-    }
+    // Add to subscriptions (set handles dedup)
+    _subscribedResources.insert(String(uri));
 
     return _jsonRpcResult(id, "{}");
 }
@@ -966,25 +959,14 @@ String Server::_handleResourcesUnsubscribe(JsonVariant params, JsonVariant id) {
         return _jsonRpcError(id, -32602, "Missing resource URI");
     }
 
-    String uriStr(uri);
-    for (auto it = _subscribedResources.begin(); it != _subscribedResources.end(); ++it) {
-        if (*it == uriStr) {
-            _subscribedResources.erase(it);
-            break;
-        }
-    }
+    _subscribedResources.erase(String(uri));
 
     return _jsonRpcResult(id, "{}");
 }
 
 void Server::notifyResourceUpdated(const char* uri) {
     // Only notify if this resource is subscribed
-    String uriStr(uri);
-    bool subscribed = false;
-    for (const auto& sub : _subscribedResources) {
-        if (sub == uriStr) { subscribed = true; break; }
-    }
-    if (!subscribed) return;
+    if (_subscribedResources.find(String(uri)) == _subscribedResources.end()) return;
 
     JsonDocument doc;
     doc["jsonrpc"] = "2.0";

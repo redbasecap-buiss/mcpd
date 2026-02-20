@@ -29,7 +29,7 @@ inline void setCORSHeaders(WebServer& server) {
     server.sendHeader("Access-Control-Allow-Origin", "*");
     server.sendHeader("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS");
     server.sendHeader("Access-Control-Allow-Headers",
-                      "Content-Type, Accept, Mcp-Session-Id");
+                      "Content-Type, Accept, Mcp-Session-Id, Authorization, X-API-Key");
     server.sendHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 }
 

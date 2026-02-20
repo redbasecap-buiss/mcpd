@@ -16,3 +16,4 @@ test_tools
 test/native/test_infrastructure
 test/native/test_modules
 test/native/test_auth_platform
+test/native/test_robustness

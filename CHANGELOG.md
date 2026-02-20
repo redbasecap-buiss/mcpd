@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.2] - 2026-02-20
+
+### Tests
+- Added **64 new robustness & edge case tests** (`test_robustness.cpp`):
+  - Malformed JSON-RPC: parse errors, null/empty input, wrong types, missing fields
+  - ID edge cases: string IDs, null IDs, float IDs, negative IDs
+  - Unknown/malicious methods: path traversal, special chars, very long names
+  - Tool call edge cases: nonexistent tools, null/empty/extra/wrong-type arguments, Unicode, very long strings, nested JSON, exception handling
+  - Resource edge cases: nonexistent URIs, path traversal, missing params
+  - Prompt edge cases: nonexistent prompts, missing required args, extra args
+  - Batch request edge cases: empty arrays, mixed valid/invalid, all-notification batches, 50-item stress test
+  - Initialize edge cases: empty client info, future protocol version, capability/server info checks
+  - Logging edge cases: valid/invalid/empty log levels
+  - Notification handling: initialized, cancelled with/without requestId
+  - Content structure validation: tool results, list responses
+  - Stress tests: 100 rapid sequential requests, 40 alternating tool/resource calls
+  - JSON injection: escaped quotes, backslashes, newlines, null bytes
+  - Completion/subscription edge cases
+  - Dynamic tool add/remove after initialization
+- Total native tests: **782** (was 718)
+
+### Fixed
+- Fixed unused parameter warning in `Server::_handleRootsList` (`mcpd.cpp`)
+- Fixed unused parameter warning in diagnostics tool handler (`MCPDiagnostics.h`)
+
+### Added
+- Added `SECURITY.md` — vulnerability reporting policy, security considerations, and threat model
+
 ## [0.27.1] - 2026-02-20
 
 ### Tests

@@ -997,7 +997,7 @@ void Server::notifyResourceUpdated(const char* uri) {
     _pendingNotifications.push_back(output);
 }
 
-String Server::_handleRootsList(JsonVariant params, JsonVariant id) {
+String Server::_handleRootsList(JsonVariant /* params */, JsonVariant id) {
     JsonDocument result;
     JsonArray roots = result["roots"].to<JsonArray>();
 

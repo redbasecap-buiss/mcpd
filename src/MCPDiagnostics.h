@@ -48,7 +48,7 @@ inline void addDiagnosticsTool(Server& server) {
     diagTool.annotations.title = "Server Diagnostics";
     diagTool.annotations.readOnlyHint = true;
 
-    diagTool.handler = [&server](const JsonObject& params) -> String {
+    diagTool.handler = [&server](const JsonObject& /* params */) -> String {
         unsigned long uptimeMs = millis() - _diagBootMs;
         unsigned long uptimeSec = uptimeMs / 1000;
 

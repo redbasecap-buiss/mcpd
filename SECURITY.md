@@ -3,35 +3,74 @@
 ## Supported Versions
 
 | Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | ✅ Yes             |
+|---------|--------------------|
+| 0.27.x  | ✅ Current         |
+| < 0.27  | ❌ Not supported   |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in mcpd, please report it responsibly.
+If you discover a security vulnerability in mcpd, please report it responsibly:
 
-**Do NOT open a public GitHub issue for security vulnerabilities.**
+1. **Do NOT** open a public GitHub issue
+2. Email: **redbasecap-buiss@users.noreply.github.com**
+3. Include: description, reproduction steps, affected versions, potential impact
 
-Instead, please email: **redbasecap-buiss@users.noreply.github.com**
+We aim to respond within 48 hours and release a fix within 7 days for critical issues.
 
-Include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+## Security Considerations
 
-We will acknowledge receipt within 48 hours and aim to provide a fix within 7 days for critical issues.
+### Network Exposure
 
-## Security Considerations for mcpd
+mcpd runs an HTTP server on your microcontroller. By default:
 
-Since mcpd runs on microcontrollers exposing network services, please consider:
+- The server listens on **all interfaces** (0.0.0.0)
+- There is **no authentication** enabled by default
+- mDNS advertisement makes the device discoverable on the local network
 
-1. **Always use API key authentication** in production (`MCPAuth`)
-2. **Use HTTPS** where possible (via reverse proxy, since MCUs typically don't support TLS natively)
-3. **Limit network exposure** — don't expose mcpd directly to the internet without a firewall
-4. **Keep firmware updated** — use the OTA feature to deploy security patches
-5. **Change default credentials** — always set a unique server name and API key
+**Recommendations:**
 
-## Scope
+- Always enable API key authentication in production: `server.enableAuth("your-secret-key")`
+- Use a strong, randomly generated API key (32+ characters)
+- Restrict network access via your router/firewall
+- Consider disabling mDNS if discovery isn't needed
 
-This policy applies to the mcpd library code. Security issues in dependencies (ArduinoJson, ESP32 Arduino core, etc.) should be reported to their respective maintainers.
+### Authentication
+
+mcpd supports multiple authentication methods:
+
+- **API Key** (via `Authorization: Bearer <key>` or `X-API-Key` header)
+- **Query parameter** authentication (for environments that can't set headers)
+- **Custom authentication callbacks** for integration with external auth systems
+
+### Input Validation
+
+- All JSON-RPC requests are parsed and validated before dispatch
+- Unknown methods return standard `-32601 Method not found` errors
+- Malformed JSON returns `-32700 Parse error`
+- Tool handlers that throw exceptions are caught and returned as `isError` responses
+- Resource URIs are validated against registered resources (no path traversal)
+
+### Hardware Access
+
+Tools that interact with hardware (GPIO, I2C, SPI, etc.) execute with full microcontroller privileges. Consider:
+
+- Only register tools that are appropriate for your use case
+- Use tool annotations (`readOnlyHint`, `destructiveHint`) to communicate risk to clients
+- OTA updates should be protected with authentication
+
+### Transport Security
+
+- **HTTP** (default): No encryption — suitable for trusted local networks only
+- **WebSocket**: Same security considerations as HTTP
+- **BLE**: Limited range provides some physical security, but no encryption at the application layer
+
+For internet-facing deployments, place mcpd behind a reverse proxy with TLS termination.
+
+## Threat Model
+
+mcpd is designed for **trusted local network** environments. It is NOT designed to be exposed directly to the internet. The primary threats considered are:
+
+1. **Unauthorized local access** → mitigated by API key authentication
+2. **Malformed input** → mitigated by input validation and error handling
+3. **Resource exhaustion** → mitigated by rate limiting (`MCPRateLimit`)
+4. **Firmware tampering** → mitigated by OTA authentication

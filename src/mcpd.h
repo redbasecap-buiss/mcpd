@@ -41,7 +41,7 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.27.0"
+#define MCPD_VERSION "0.27.2"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {

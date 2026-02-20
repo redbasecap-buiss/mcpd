@@ -55,6 +55,7 @@ inline void registerOTATools(Server& server) {
             "Get current firmware and OTA update information",
             R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 doc["firmware_version"] = _otaState.firmwareVersion;
                 doc["build_date"] = _otaState.buildDate;
@@ -88,6 +89,7 @@ inline void registerOTATools(Server& server) {
             "List OTA partition layout and status",
             R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 JsonArray parts = doc["partitions"].to<JsonArray>();
 
@@ -155,6 +157,7 @@ inline void registerOTATools(Server& server) {
             "Mark the current firmware as valid, preventing automatic rollback on next boot",
             R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
+                (void)args;
                 _otaState.firmwareValid = true;
 
                 JsonDocument doc;

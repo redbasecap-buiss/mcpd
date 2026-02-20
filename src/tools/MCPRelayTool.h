@@ -204,6 +204,7 @@ public:
         server.addTool("relay_all_off", "Turn ALL relays OFF immediately (emergency/safety stop)",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 int count = 0;
                 for (int i = 0; i < (int)channels().size(); i++) {
                     if (channels()[i].state) {
@@ -219,6 +220,7 @@ public:
         server.addTool("relay_status", "Get status of all relay channels",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 checkTimers();
                 int onCount = 0;
                 for (auto& ch : channels()) if (ch.state) onCount++;

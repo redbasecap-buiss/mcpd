@@ -166,6 +166,7 @@ public:
         server.addTool("nvs_list", "List all keys in persistent non-volatile storage",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 totalOps()++;
                 String result = "{\"namespace\":\"" + namespaceName() + "\",\"count\":" + String(store().size()) + ",\"entries\":[";
                 bool first = true;
@@ -188,6 +189,7 @@ public:
         server.addTool("nvs_status", "Get NVS storage status and statistics",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 unsigned long freeEntries = 0;
                 unsigned long usedEntries = store().size();
 

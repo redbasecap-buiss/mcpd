@@ -190,6 +190,7 @@ inline void registerTimerTools(Server& server) {
             "Read precise timestamps: millis() and micros() for timing measurements.",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 doc["millis"] = millis();
                 doc["micros"] = micros();

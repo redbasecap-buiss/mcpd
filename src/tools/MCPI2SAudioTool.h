@@ -51,12 +51,14 @@ static String _i2sBase64Encode(const uint8_t* data, size_t len) {
 class I2SAudioTool {
 public:
     static void attach(Server& server, I2SPins pins = I2SPins()) {
+        (void)pins; // used inside platform-specific blocks
 
         // i2s_init
         server.addTool("i2s_init",
             "Initialize I2S audio interface for microphone and/or speaker.",
             R"j({"type":"object","properties":{"sampleRate":{"type":"integer","description":"Sample rate in Hz (default: 16000)","enum":[8000,11025,16000,22050,32000,44100,48000]},"bitsPerSample":{"type":"integer","description":"Bits per sample (default: 16)","enum":[16,24,32]},"mode":{"type":"string","description":"Audio mode: mic, speaker, or duplex","enum":["mic","speaker","duplex"],"default":"mic"},"channels":{"type":"integer","description":"1=mono, 2=stereo (default: 1)","enum":[1,2]}}})j",
-            [pins](const JsonObject& args) -> String {
+            [&](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 _i2sSampleRate = args["sampleRate"] | 16000;
@@ -116,7 +118,8 @@ public:
         server.addTool("i2s_record",
             "Record audio from I2S microphone. Returns base64-encoded WAV or raw PCM.",
             R"j({"type":"object","properties":{"durationMs":{"type":"integer","description":"Recording duration in ms (default: 1000, max: 5000)"},"format":{"type":"string","description":"Output format","enum":["raw","wav"],"default":"wav"}}})j",
-            [pins](const JsonObject& args) -> String {
+            [&](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_i2sInitialized) {
@@ -192,7 +195,8 @@ public:
         server.addTool("i2s_play",
             "Play base64-encoded audio through I2S speaker/DAC.",
             R"j({"type":"object","properties":{"data":{"type":"string","description":"Base64-encoded audio data (PCM or WAV)"}},"required":["data"]})j",
-            [pins](const JsonObject& args) -> String {
+            [&](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_i2sInitialized) {
@@ -253,6 +257,7 @@ public:
             "Set I2S playback volume (software scaling).",
             R"j({"type":"object","properties":{"volume":{"type":"integer","description":"Volume 0-100","minimum":0,"maximum":100}},"required":["volume"]})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 _i2sVolume = args["volume"] | 100;
@@ -273,6 +278,7 @@ public:
             "Get I2S audio interface status and statistics.",
             R"j({"type":"object","properties":{}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 doc["initialized"] = _i2sInitialized;
@@ -293,7 +299,8 @@ public:
         server.addTool("i2s_stop",
             "Stop I2S audio interface and free driver resources.",
             R"j({"type":"object","properties":{}})j",
-            [pins](const JsonObject& args) -> String {
+            [&](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (_i2sInitialized) {

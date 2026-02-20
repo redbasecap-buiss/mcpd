@@ -19,6 +19,7 @@ public:
             "Get system information: free heap, uptime, chip model, WiFi IP",
             R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 doc["freeHeap"] = ESP.getFreeHeap();
                 doc["heapSize"] = ESP.getHeapSize();

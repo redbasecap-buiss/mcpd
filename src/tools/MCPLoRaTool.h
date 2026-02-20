@@ -53,12 +53,14 @@ static int _loraCR = 5;
 class LoRaTool {
 public:
     static void attach(Server& server, LoRaPins pins = LoRaPins()) {
+        (void)pins; // used inside platform-specific blocks
 
         // lora_init
         server.addTool("lora_init",
             "Initialize LoRa radio transceiver. Frequency in Hz (433E6, 868E6, 915E6).",
             R"j({"type":"object","properties":{"frequency":{"type":"number","description":"Carrier frequency in Hz (default: 868000000)"},"txPower":{"type":"integer","description":"Transmit power 2-20 dBm (default: 17)"},"spreadingFactor":{"type":"integer","description":"Spreading factor 6-12 (default: 7)"},"bandwidth":{"type":"number","description":"Bandwidth in Hz (default: 125000)"},"codingRate":{"type":"integer","description":"Coding rate 5-8 (default: 5)"},"syncWord":{"type":"integer","description":"Sync word 0x00-0xFF (default: 0x12)"},"preamble":{"type":"integer","description":"Preamble length (default: 8)"},"enableCrc":{"type":"boolean","description":"Enable CRC (default: true)"}}})j",
-            [pins](const JsonObject& args) -> String {
+            [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 _loraFrequency = args["frequency"] | 868000000L;
@@ -125,6 +127,7 @@ public:
             "Send a LoRa packet. Returns after transmission complete.",
             R"j({"type":"object","properties":{"data":{"type":"string","description":"Data to send (max 255 bytes)"},"hex":{"type":"boolean","description":"Treat data as hex string (default: false)"}},"required":["data"]})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_loraInitialized) {
@@ -168,6 +171,7 @@ public:
             "Read received LoRa packets from the ring buffer.",
             R"j({"type":"object","properties":{"maxPackets":{"type":"integer","description":"Max packets to return (default: all)"}}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 int maxPkts = args["maxPackets"] | LORA_RX_BUFFER_SIZE;
@@ -200,6 +204,7 @@ public:
             "Change LoRa radio parameters without re-initialization.",
             R"j({"type":"object","properties":{"txPower":{"type":"integer","description":"Transmit power 2-20 dBm"},"spreadingFactor":{"type":"integer","description":"Spreading factor 6-12"},"bandwidth":{"type":"number","description":"Bandwidth in Hz"},"codingRate":{"type":"integer","description":"Coding rate 5-8"},"enableCrc":{"type":"boolean","description":"Enable/disable CRC"}}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_loraInitialized) {
@@ -225,6 +230,7 @@ public:
             "Get LoRa radio status, configuration, and packet statistics.",
             R"j({"type":"object","properties":{}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_loraInitialized) {
@@ -256,6 +262,7 @@ public:
             "Put LoRa radio into sleep mode or wake it up.",
             R"j({"type":"object","properties":{"sleep":{"type":"boolean","description":"true=sleep, false=wake (default: true)"}}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_loraInitialized) {
@@ -279,6 +286,7 @@ public:
             "Perform Channel Activity Detection (CAD) to check if the channel is in use.",
             R"j({"type":"object","properties":{}})j",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
 #ifdef ESP32
                 if (!_loraInitialized) {

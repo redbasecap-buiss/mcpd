@@ -21,6 +21,7 @@ public:
             "Scan the I2C bus and return addresses of connected devices",
             R"({"type":"object","properties":{}})",
             [&wire](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 JsonArray devices = doc["devices"].to<JsonArray>();
 

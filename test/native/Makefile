@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -DMCPD_TEST -pthread
 INCLUDES = -I../../src -I../mock_includes -I..
 
 # Targets
-TESTS = test_jsonrpc test_tools test_mcp_http test_infrastructure test_modules test_auth_platform test_robustness test_session
+TESTS = test_jsonrpc test_tools test_mcp_http test_infrastructure test_modules test_auth_platform test_robustness test_session test_content_transport
 
 .PHONY: all clean test
 
@@ -33,6 +33,9 @@ test_robustness: ../test_robustness.cpp ../arduino_mock.h ../test_framework.h ..
 test_session: ../test_session.cpp ../arduino_mock.h ../test_framework.h ../../src/mcpd.h ../../src/mcpd.cpp ../../src/MCPSession.h
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ ../test_session.cpp
 
+test_content_transport: ../test_content_transport.cpp ../arduino_mock.h ../test_framework.h ../../src/mcpd.h ../../src/mcpd.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ ../test_content_transport.cpp
+
 test: $(TESTS)
 	@echo ""
 	@echo "══════════════════════════════════════════"
@@ -47,6 +50,7 @@ test: $(TESTS)
 	@./test_auth_platform
 	@./test_robustness
 	@./test_session
+	@./test_content_transport
 	@echo "All test suites completed."
 
 clean:

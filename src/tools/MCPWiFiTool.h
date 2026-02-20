@@ -19,6 +19,7 @@ public:
             "Get current WiFi connection status",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 JsonDocument doc;
                 doc["connected"] = (WiFi.status() == WL_CONNECTED);
                 doc["ssid"] = WiFi.SSID();
@@ -39,6 +40,7 @@ public:
             "Scan for available WiFi networks",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 int n = WiFi.scanNetworks();
                 JsonDocument doc;
                 JsonArray networks = doc["networks"].to<JsonArray>();

@@ -33,13 +33,13 @@
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
 | MCP spec compliant | ✅ 2025-03-26 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 827 tests | ❌ self-described | N/A |
+| Actually compiles | ✅ 883 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
 | mDNS discovery | ✅ | ❌ | ❌ |
 | Resource Templates (RFC 6570) | ✅ | ❌ | ❌ |
-| Built-in tools (GPIO, I2C, SPI, ADC, UART, CAN, Modbus, FS, Power, Timer, LCD, IR, RTC, Camera, ESP-NOW…) | ✅ 153 tools | ❌ | ❌ |
+| Built-in tools (GPIO, I2C, SPI, ADC, UART, CAN, Modbus, FS, Power, Timer, LCD, IR, RTC, Camera, ESP-NOW…) | ✅ 106 tools | ❌ | ❌ |
 | Sampling (server requests LLM from client) | ✅ | ❌ | ❌ |
 | Elicitation (server requests user input) | ✅ | ❌ | ❌ |
 | Audio content type | ✅ | ❌ | ❌ |

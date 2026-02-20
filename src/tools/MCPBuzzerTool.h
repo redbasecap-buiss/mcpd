@@ -161,7 +161,9 @@ public:
         server.addTool("buzzer_stop", "Stop the buzzer immediately",
             R"=({"type":"object","properties":{}})=",
             [](const JsonObject& args) -> String {
+                (void)args;
                 bool wasActive = cfg.active;
+                (void)args;
                 stopTone();
                 return String("{\"stopped\":true,\"was_active\":") +
                        (wasActive ? "true" : "false") + "}";

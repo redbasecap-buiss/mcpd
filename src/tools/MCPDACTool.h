@@ -95,6 +95,7 @@ public:
         server.addTool("dac_status", "Get current DAC output status for both channels",
             R"({"type":"object","properties":{}})",
             [](const JsonObject& args) -> String {
+                (void)args;
                 String result = "{\"channels\":[";
                 for (int ch = 0; ch < 2; ch++) {
                     if (ch > 0) result += ",";

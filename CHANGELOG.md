@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.5] - 2026-02-21
+
+### Tests
+- Added **56 new content, transport & API surface tests** (`test_content_transport.cpp`):
+  - MCPContent factories: text, image, audio, resource (text & blob), empty, unicode
+  - MCPContent JSON serialization: all content types with field validation
+  - MCPToolResult: text, error, image (with/without alt), audio, chaining, empty, multi-content JSON
+  - Tool annotations: defaults, readOnly, idempotent, localOnly, custom, fluent API, JSON presence/absence
+  - Transport constants: content types, headers
+  - RateLimit: default allow, burst limiting
+  - Tool/Resource JSON: name, description, schema, handler invocation
+  - Prompt JSON: arguments serialization
+  - LogLevel: ordering, to/from string, invalid input
+  - Server rich tool integration: listing, multi-content calls, error results, audio, embedded resources
+  - Dynamic tool lifecycle: add → remove → re-add with different handler
+  - Resource template removal
+  - Version/protocol constants validation
+- **Total: 883 tests** (827 → 883)
+
+### Code Quality
+- **Eliminated all source warnings** (34 unique warnings across 13 tool headers):
+  - Added `(void)args;` for unused handler parameters in tool lambdas
+  - Added `(void)pins;` for platform-gated parameters in I2SAudioTool, LoRaTool
+  - Removed unused lambda capture `[pins]` → `[]` in LoRaTool
+  - Added `[[maybe_unused]]` to `_findPeerStats` in ESPNowTool (used only inside `#ifdef ESP32`)
+- Zero source warnings remain (mock/test warnings are expected)
+
+### Docs
+- Added `docs/TOOLS_REFERENCE.md`: auto-generated reference for all 44 tool modules (106 tools)
+- Fixed README tool count: 153 → 106 (accurate count from source)
+- Updated README test count: 827 → 883
+
 ## [0.27.3] - 2026-02-20
 
 ### Tests

@@ -68,6 +68,7 @@ public:
             "Turn off all NeoPixel LEDs",
             R"=({"type":"object","properties":{}})=",
             [&strip](const JsonObject& args) -> String {
+                (void)args;
                 strip.clear();
                 strip.show();
                 return String("{\"cleared\":true,\"pixels\":") + strip.numPixels() + "}";

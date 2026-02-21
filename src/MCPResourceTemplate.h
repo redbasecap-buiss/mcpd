@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "MCPResource.h"  // For MCPResourceAnnotations
+#include "MCPIcon.h"
 
 namespace mcpd {
 
@@ -35,10 +36,12 @@ using MCPResourceTemplateHandler = std::function<String(const std::map<String, S
 struct MCPResourceTemplate {
     String uriTemplate;     // RFC 6570 Level 1 template
     String name;
+    String title;           // Optional: human-readable display name (MCP 2025-11-25)
     String description;
     String mimeType;
     MCPResourceTemplateHandler handler;
     MCPResourceAnnotations annotations;
+    std::vector<MCPIcon> icons; // Optional: icons for UI display (MCP 2025-11-25)
 
     MCPResourceTemplate() = default;
 
@@ -47,6 +50,12 @@ struct MCPResourceTemplate {
                         MCPResourceTemplateHandler handler)
         : uriTemplate(uriTemplate), name(name), description(description),
           mimeType(mimeType), handler(handler) {}
+
+    /** Set display title (MCP 2025-11-25) */
+    MCPResourceTemplate& setTitle(const char* t) { title = t; return *this; }
+
+    /** Add an icon (MCP 2025-11-25) */
+    MCPResourceTemplate& addIcon(const MCPIcon& icon) { icons.push_back(icon); return *this; }
 
     /** Builder-style: set annotations */
     MCPResourceTemplate& annotate(const MCPResourceAnnotations& ann) {
@@ -73,12 +82,14 @@ struct MCPResourceTemplate {
     void toJson(JsonObject& obj) const {
         obj["uriTemplate"] = uriTemplate;
         obj["name"] = name;
+        if (!title.isEmpty()) obj["title"] = title;
         obj["description"] = description;
         obj["mimeType"] = mimeType;
         if (annotations.hasAnnotations) {
             JsonObject ann = obj["annotations"].to<JsonObject>();
             annotations.toJson(ann);
         }
+        iconsToJson(icons, obj);
     }
 
     /**

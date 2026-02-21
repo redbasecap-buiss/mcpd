@@ -14,6 +14,8 @@
 #include <vector>
 #include <map>
 
+#include "MCPIcon.h"
+
 namespace mcpd {
 
 /**
@@ -85,9 +87,11 @@ using MCPPromptHandler = std::function<std::vector<MCPPromptMessage>(
  */
 struct MCPPrompt {
     String name;
+    String title;           // Optional: human-readable display name (MCP 2025-11-25)
     String description;
     std::vector<MCPPromptArgument> arguments;
     MCPPromptHandler handler;
+    std::vector<MCPIcon> icons; // Optional: icons for UI display (MCP 2025-11-25)
 
     MCPPrompt() = default;
 
@@ -97,11 +101,18 @@ struct MCPPrompt {
         : name(name), description(description),
           arguments(std::move(arguments)), handler(handler) {}
 
+    /** Set display title (MCP 2025-11-25) */
+    MCPPrompt& setTitle(const char* t) { title = t; return *this; }
+
+    /** Add an icon (MCP 2025-11-25) */
+    MCPPrompt& addIcon(const MCPIcon& icon) { icons.push_back(icon); return *this; }
+
     /**
      * Serialize for prompts/list response.
      */
     void toJson(JsonObject& obj) const {
         obj["name"] = name;
+        if (!title.isEmpty()) obj["title"] = title;
         obj["description"] = description;
 
         if (!arguments.empty()) {
@@ -113,6 +124,7 @@ struct MCPPrompt {
                 argObj["required"] = arg.required;
             }
         }
+        iconsToJson(icons, obj);
     }
 };
 

@@ -719,8 +719,8 @@ TEST(completion_manager_no_providers) {
 // ═══════════════════════════════════════════════════════════════════════
 
 TEST(version_constants) {
-    ASSERT_EQ(String(MCPD_VERSION), String("0.31.0"));
-    ASSERT_EQ(String(MCPD_MCP_PROTOCOL_VERSION), String("2025-03-26"));
+    ASSERT_EQ(String(MCPD_VERSION), String("0.32.0"));
+    ASSERT_EQ(String(MCPD_MCP_PROTOCOL_VERSION), String("2025-11-25"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════

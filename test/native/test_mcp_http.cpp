@@ -436,7 +436,7 @@ void test_initialize() {
         jsonRpc("initialize", R"({"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}})"));
     ASSERT_EQ(r.status, 200);
     ASSERT_STR_CONTAINS(r.body, "protocolVersion");
-    ASSERT_STR_CONTAINS(r.body, "2025-03-26");
+    ASSERT_STR_CONTAINS(r.body, "2025-11-25");
     ASSERT_STR_CONTAINS(r.body, "test-device");
     ASSERT_STR_CONTAINS(r.body, "capabilities");
     ASSERT(r.headers.count("mcp-session-id") > 0);

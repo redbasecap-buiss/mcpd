@@ -608,6 +608,15 @@ String Server::_handleInitialize(JsonVariant params, JsonVariant id) {
     JsonObject serverInfo = result["serverInfo"].to<JsonObject>();
     serverInfo["name"] = _name;
     serverInfo["version"] = _version ? _version : MCPD_VERSION;
+    if (_description) serverInfo["description"] = _description;
+    if (_websiteUrl) serverInfo["websiteUrl"] = _websiteUrl;
+    if (!_icons.empty()) {
+        JsonArray iconsArr = serverInfo["icons"].to<JsonArray>();
+        for (const auto& icon : _icons) {
+            JsonObject iconObj = iconsArr.add<JsonObject>();
+            icon.toJson(iconObj);
+        }
+    }
 
     // MCP 2025-03-26: instructions guide the LLM's behavior with this server
     if (_instructions) {

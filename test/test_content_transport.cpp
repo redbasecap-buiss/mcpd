@@ -528,7 +528,7 @@ TEST(version_valid) {
 }
 
 TEST(protocol_ver) {
-    ASSERT(strcmp(MCPD_MCP_PROTOCOL_VERSION, "2025-03-26") == 0);
+    ASSERT(strcmp(MCPD_MCP_PROTOCOL_VERSION, "2025-11-25") == 0);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

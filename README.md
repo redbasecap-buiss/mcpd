@@ -16,7 +16,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-orange.svg)](https://platformio.org)
 [![Arduino](https://img.shields.io/badge/Arduino-compatible-teal.svg)](https://www.arduino.cc)
-[![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple.svg)](https://modelcontextprotocol.io)
+[![MCP](https://img.shields.io/badge/MCP-2025--11--25-purple.svg)](https://modelcontextprotocol.io)
 [![Works with Claude Desktop](https://img.shields.io/badge/Works%20with-Claude%20Desktop-cc785c.svg)](https://claude.ai/download)
 
 </div>
@@ -32,8 +32,8 @@
 | Feature | mcpd | ESP32MCPServer | esp-mcp |
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
-| MCP spec compliant | ✅ 2025-03-26 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 1037 tests | ❌ self-described | N/A |
+| MCP spec compliant | ✅ 2025-11-25 | ❌ custom WS | ❌ |
+| Actually compiles | ✅ 1105 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
@@ -47,6 +47,8 @@
 | Server Instructions (LLM guidance) | ✅ | ❌ | ❌ |
 | Runtime Tool Enable/Disable | ✅ | ❌ | ❌ |
 | Structured Content (text, image, resource) | ✅ | ❌ | ❌ |
+| Icons (server, tools, resources, prompts) | ✅ | ❌ | ❌ |
+| ResourceLink content type | ✅ | ❌ | ❌ |
 | Progress Notifications | ✅ | ❌ | ❌ |
 | Request Cancellation | ✅ | ❌ | ❌ |
 | Prompts support | ✅ | ❌ | ❌ |
@@ -324,7 +326,7 @@ mcp.enableTool("maintenance_tool");    // Visible again
 
 ### 📋 Server Instructions
 
-Guide the LLM's behavior with your device using server instructions (MCP 2025-03-26):
+Guide the LLM's behavior with your device using server instructions (MCP 2025-11-25):
 
 ```cpp
 mcp.setInstructions(
@@ -422,7 +424,7 @@ For full API documentation, see [docs/API.md](docs/API.md).
 
 ## MCP Compliance
 
-Implements [MCP specification 2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26):
+Implements [MCP specification 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25):
 
 - ✅ JSON-RPC 2.0 message format
 - ✅ `initialize` / `initialized` lifecycle

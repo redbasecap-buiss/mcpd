@@ -444,7 +444,7 @@ TEST(jsonrpc_initialize) {
     String resp = srv._processJsonRpc(req);
     ASSERT_STR_CONTAINS(resp.c_str(), "\"serverInfo\"");
     ASSERT_STR_CONTAINS(resp.c_str(), "init-test");
-    ASSERT_STR_CONTAINS(resp.c_str(), "2025-03-26");
+    ASSERT_STR_CONTAINS(resp.c_str(), "2025-11-25");
 }
 
 TEST(jsonrpc_tools_list_empty) {

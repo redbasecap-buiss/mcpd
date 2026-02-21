@@ -8,6 +8,9 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <functional>
+#include <vector>
+
+#include "MCPIcon.h"
 
 namespace mcpd {
 
@@ -49,11 +52,13 @@ struct MCPToolAnnotations {
  */
 struct MCPTool {
     String name;
+    String title;             // Optional: human-readable display name (MCP 2025-11-25)
     String description;
     String inputSchemaJson;   // JSON Schema as string
     String outputSchemaJson;  // Optional: JSON Schema for structured output
     MCPToolHandler handler;
     MCPToolAnnotations annotations;
+    std::vector<MCPIcon> icons; // Optional: icons for UI display (MCP 2025-11-25)
 
     MCPTool() = default;
 
@@ -93,6 +98,12 @@ struct MCPTool {
         return *this;
     }
 
+    /** Set display title (MCP 2025-11-25) */
+    MCPTool& setTitle(const char* t) { title = t; return *this; }
+
+    /** Add an icon (MCP 2025-11-25) */
+    MCPTool& addIcon(const MCPIcon& icon) { icons.push_back(icon); return *this; }
+
     /** Set output schema (builder-style). Enables structured content in tool results. */
     MCPTool& setOutputSchema(const char* schemaJson) {
         outputSchemaJson = schemaJson;
@@ -112,6 +123,7 @@ struct MCPTool {
      */
     void toJson(JsonObject& obj) const {
         obj["name"] = name;
+        if (!title.isEmpty()) obj["title"] = title;
         obj["description"] = description;
 
         // Parse the input schema string into the JSON object
@@ -131,6 +143,9 @@ struct MCPTool {
             JsonObject ann = obj["annotations"].to<JsonObject>();
             annotations.toJson(ann);
         }
+
+        // Include icons if set (MCP 2025-11-25)
+        iconsToJson(icons, obj);
     }
 };
 

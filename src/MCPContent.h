@@ -24,14 +24,16 @@ namespace mcpd {
  * A single content item in a tool result.
  */
 struct MCPContent {
-    enum Type { TEXT, IMAGE, AUDIO, RESOURCE };
+    enum Type { TEXT, IMAGE, AUDIO, RESOURCE, RESOURCE_LINK };
 
     Type type;
     String text;        // For TEXT: the text content
-    String data;        // For IMAGE: base64-encoded image data
-    String mimeType;    // For IMAGE or RESOURCE
-    String uri;         // For RESOURCE: resource URI
+    String data;        // For IMAGE/AUDIO: base64-encoded data
+    String mimeType;    // For IMAGE, AUDIO, RESOURCE, RESOURCE_LINK
+    String uri;         // For RESOURCE/RESOURCE_LINK: resource URI
     String blob;        // For RESOURCE: base64-encoded binary (alternative to text)
+    String name;        // For RESOURCE_LINK: resource name
+    String description; // For RESOURCE_LINK: resource description
 
     // Factory: text content
     static MCPContent makeText(const String& text) {
@@ -81,6 +83,19 @@ struct MCPContent {
         return c;
     }
 
+    // Factory: resource link (MCP 2025-11-25)
+    static MCPContent makeResourceLink(const String& uri, const String& name,
+                                       const String& mimeType = "",
+                                       const String& description = "") {
+        MCPContent c;
+        c.type = RESOURCE_LINK;
+        c.uri = uri;
+        c.name = name;
+        c.mimeType = mimeType;
+        c.description = description;
+        return c;
+    }
+
     void toJson(JsonObject obj) const {
         switch (type) {
             case TEXT:
@@ -107,6 +122,14 @@ struct MCPContent {
                 } else {
                     res["text"] = text;
                 }
+                break;
+            }
+            case RESOURCE_LINK: {
+                obj["type"] = "resource_link";
+                obj["uri"] = uri;
+                obj["name"] = name;
+                if (!mimeType.isEmpty()) obj["mimeType"] = mimeType;
+                if (!description.isEmpty()) obj["description"] = description;
                 break;
             }
         }

@@ -20,6 +20,7 @@
 #include <map>
 #include <set>
 
+#include "MCPIcon.h"
 #include "MCPTool.h"
 #include "MCPResource.h"
 #include "MCPResourceTemplate.h"
@@ -44,8 +45,9 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.31.0"
-#define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
+#define MCPD_VERSION "0.32.0"
+#define MCPD_MCP_PROTOCOL_VERSION "2025-11-25"
+#define MCPD_MCP_PROTOCOL_VERSION_COMPAT "2025-03-26"
 
 namespace mcpd {
 
@@ -166,6 +168,22 @@ public:
      * Set a custom version string (overrides MCPD_VERSION in server info).
      */
     void setVersion(const char* version) { _version = version; }
+
+    /**
+     * Set a human-readable description of this server (MCP 2025-11-25).
+     */
+    void setDescription(const char* desc) { _description = desc; }
+
+    /**
+     * Set the server's website URL (MCP 2025-11-25).
+     */
+    void setWebsiteUrl(const char* url) { _websiteUrl = url; }
+
+    /**
+     * Add an icon for this server (MCP 2025-11-25).
+     * Icons are included in serverInfo during initialize.
+     */
+    void addIcon(const MCPIcon& icon) { _icons.push_back(icon); }
 
     /**
      * Enable or disable a tool at runtime by name.
@@ -401,6 +419,9 @@ private:
     const char* _endpoint = "/mcp";
     const char* _instructions = nullptr;
     const char* _version = nullptr;
+    const char* _description = nullptr;
+    const char* _websiteUrl = nullptr;
+    std::vector<MCPIcon> _icons;
     bool _mdnsEnabled = true;
     std::set<String> _disabledTools;  // tools hidden from listing/calling
     String _sessionId;

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.0] - 2026-02-21
+
+### Features
+- **Integrated Auth into Server** — `server.auth()` accessor, automatic authentication enforcement on all HTTP endpoints (POST/GET/DELETE). Supports Bearer tokens, API keys via header/query, custom callbacks, and multi-key rotation.
+- **Integrated Metrics into Server** — `server.metrics()` accessor, automatic per-method request counting and latency tracking in dispatch. Prometheus `/metrics` endpoint auto-registered on `begin()`. Error counting for unknown methods.
+
+### Tests
+- Added **71 new integration tests** (`test_integration.cpp`):
+  - Auth module: enable/disable, API key management, custom callbacks, re-enable after disable
+  - Metrics module: initial state, request/error counting, dispatch-level recording, notification tracking
+  - Batch JSON-RPC: single/multiple requests, all-notifications, mixed, empty array, metrics in batch
+  - JSON-RPC edge cases: missing/wrong version, parse errors, string/numeric ID preservation, error messages for missing params
+  - Cross-module integration: capabilities advertisement, tool/resource/prompt lifecycle, pagination, subscriptions, dynamic add/remove, rich tool handlers, exception handling, rate limit info in initialize, resource templates
+- **Total: 1017 tests** (946 → 1017)
+
 ## [0.28.0] - 2026-02-21
 
 ### Tests

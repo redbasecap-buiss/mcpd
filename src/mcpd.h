@@ -37,12 +37,14 @@
 #include "MCPRateLimit.h"
 #include "MCPSession.h"
 #include "MCPHeap.h"
+#include "MCPAuth.h"
+#include "MCPMetrics.h"
 
 #ifdef ESP32
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.28.0"
+#define MCPD_VERSION "0.29.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -251,6 +253,16 @@ public:
     /** Access heap monitor for memory diagnostics */
     HeapMonitor& heap() { return _heapMonitor; }
 
+    // ── Authentication ─────────────────────────────────────────────────
+
+    /** Access the authentication module */
+    Auth& auth() { return _auth; }
+
+    // ── Metrics ────────────────────────────────────────────────────────
+
+    /** Access the Prometheus metrics module */
+    Metrics& metrics() { return _metrics; }
+
     // ── Lifecycle Hooks ────────────────────────────────────────────────
 
     using LifecycleCallback = std::function<void()>;
@@ -349,6 +361,8 @@ private:
     RateLimiter _rateLimiter;
     SessionManager _sessionManager;
     HeapMonitor _heapMonitor;
+    Auth _auth;
+    Metrics _metrics;
 
     // Lifecycle callbacks
     InitCallback _onInitializeCb;

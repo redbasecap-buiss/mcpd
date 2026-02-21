@@ -182,6 +182,9 @@ void Server::begin() {
         _httpServer->send(204);
     });
 
+    // Register Prometheus metrics endpoint
+    _metrics.begin(*_httpServer);
+
     _httpServer->begin();
 
     // mDNS advertisement
@@ -334,6 +337,12 @@ void Server::stop() {
 void Server::_handleMCPPost() {
     transport::setCORSHeaders(*_httpServer);
 
+    // Authentication check
+    if (_auth.isEnabled() && !_auth.authenticate(*_httpServer)) {
+        Auth::sendUnauthorized(*_httpServer);
+        return;
+    }
+
     // Rate limit check
     if (_rateLimiter.isEnabled() && !_rateLimiter.tryAcquire()) {
         _httpServer->send(429, transport::CONTENT_TYPE_JSON,
@@ -377,6 +386,12 @@ void Server::_handleMCPPost() {
 void Server::_handleMCPGet() {
     transport::setCORSHeaders(*_httpServer);
 
+    // Authentication check
+    if (_auth.isEnabled() && !_auth.authenticate(*_httpServer)) {
+        Auth::sendUnauthorized(*_httpServer);
+        return;
+    }
+
     // Check that the client wants SSE
     // Note: on ESP32 WebServer, we need to take over the client socket
     if (!_initialized || _sessionId.isEmpty()) {
@@ -407,6 +422,12 @@ void Server::_handleMCPGet() {
 
 void Server::_handleMCPDelete() {
     transport::setCORSHeaders(*_httpServer);
+
+    // Authentication check
+    if (_auth.isEnabled() && !_auth.authenticate(*_httpServer)) {
+        Auth::sendUnauthorized(*_httpServer);
+        return;
+    }
 
     String clientSession = _httpServer->header(transport::HEADER_SESSION_ID);
     if (clientSession == _sessionId) {
@@ -499,25 +520,34 @@ String Server::_dispatch(const char* method, JsonVariant params, JsonVariant id)
 
     String m(method);
 
-    if (m == "initialize")       return _handleInitialize(params, id);
-    if (m == "ping")             return _handlePing(id);
-    if (m == "tools/list")       return _handleToolsList(params, id);
-    if (m == "tools/call")       return _handleToolsCall(params, id);
-    if (m == "resources/list")   return _handleResourcesList(params, id);
-    if (m == "resources/read")   return _handleResourcesRead(params, id);
-    if (m == "resources/templates/list") return _handleResourcesTemplatesList(params, id);
-    if (m == "prompts/list")           return _handlePromptsList(params, id);
-    if (m == "prompts/get")            return _handlePromptsGet(params, id);
-    if (m == "logging/setLevel")       return _handleLoggingSetLevel(params, id);
-    if (m == "completion/complete")     return _handleCompletionComplete(params, id);
-    if (m == "resources/subscribe")     return _handleResourcesSubscribe(params, id);
-    if (m == "resources/unsubscribe")   return _handleResourcesUnsubscribe(params, id);
-    if (m == "roots/list")              return _handleRootsList(params, id);
+    // Record metrics for each dispatched method
+    unsigned long _dispatchStart = millis();
+
+    auto _recordAndReturn = [&](const String& result) -> String {
+        _metrics.recordRequest(m, millis() - _dispatchStart);
+        return result;
+    };
+
+    if (m == "initialize")       return _recordAndReturn(_handleInitialize(params, id));
+    if (m == "ping")             return _recordAndReturn(_handlePing(id));
+    if (m == "tools/list")       return _recordAndReturn(_handleToolsList(params, id));
+    if (m == "tools/call")       return _recordAndReturn(_handleToolsCall(params, id));
+    if (m == "resources/list")   return _recordAndReturn(_handleResourcesList(params, id));
+    if (m == "resources/read")   return _recordAndReturn(_handleResourcesRead(params, id));
+    if (m == "resources/templates/list") return _recordAndReturn(_handleResourcesTemplatesList(params, id));
+    if (m == "prompts/list")           return _recordAndReturn(_handlePromptsList(params, id));
+    if (m == "prompts/get")            return _recordAndReturn(_handlePromptsGet(params, id));
+    if (m == "logging/setLevel")       return _recordAndReturn(_handleLoggingSetLevel(params, id));
+    if (m == "completion/complete")     return _recordAndReturn(_handleCompletionComplete(params, id));
+    if (m == "resources/subscribe")     return _recordAndReturn(_handleResourcesSubscribe(params, id));
+    if (m == "resources/unsubscribe")   return _recordAndReturn(_handleResourcesUnsubscribe(params, id));
+    if (m == "roots/list")              return _recordAndReturn(_handleRootsList(params, id));
 
     // notifications/initialized — no response needed
-    if (m == "notifications/initialized") return "";
+    if (m == "notifications/initialized") { _metrics.recordRequest(m, millis() - _dispatchStart); return ""; }
     // notifications/cancelled — cancel in-flight request
     if (m == "notifications/cancelled") {
+        _metrics.recordRequest(m, millis() - _dispatchStart);
         if (!params.isNull()) {
             const char* rid = params["requestId"].as<const char*>();
             String reqId = rid ? rid : "";
@@ -529,6 +559,7 @@ String Server::_dispatch(const char* method, JsonVariant params, JsonVariant id)
         return "";
     }
 
+    _metrics.recordError();
     return _jsonRpcError(id, -32601, "Method not found");
 }
 

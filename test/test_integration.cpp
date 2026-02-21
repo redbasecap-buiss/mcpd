@@ -780,6 +780,115 @@ TEST(error_with_data_preserves_id) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+// Instructions & Version Tests
+// ════════════════════════════════════════════════════════════════════════
+
+TEST(instructions_included_in_initialize) {
+    Server server("test", 80);
+    server.setInstructions("Read temperature before adjusting fans.");
+
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+    ASSERT(res.indexOf("Read temperature before adjusting fans.") >= 0);
+    ASSERT(res.indexOf("\"instructions\"") >= 0);
+}
+
+TEST(instructions_absent_when_not_set) {
+    Server server("test", 80);
+
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+    ASSERT(res.indexOf("\"instructions\"") < 0);
+}
+
+TEST(custom_version_in_initialize) {
+    Server server("test", 80);
+    server.setVersion("1.2.3-custom");
+
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+    ASSERT(res.indexOf("1.2.3-custom") >= 0);
+}
+
+TEST(default_version_when_not_overridden) {
+    Server server("test", 80);
+
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+    ASSERT(res.indexOf(MCPD_VERSION) >= 0);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Tool Enable/Disable Tests
+// ════════════════════════════════════════════════════════════════════════
+
+TEST(disable_tool_hides_from_list) {
+    Server server("test", 80);
+    server.addTool("visible", "A tool", "{}", [](const JsonObject&) { return String("ok"); });
+    server.addTool("hidden", "Another", "{}", [](const JsonObject&) { return String("ok"); });
+
+    server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+
+    // Both visible initially
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}})");
+    ASSERT(res.indexOf("\"visible\"") >= 0);
+    ASSERT(res.indexOf("\"hidden\"") >= 0);
+
+    // Disable one
+    ASSERT(server.disableTool("hidden"));
+    res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}})");
+    ASSERT(res.indexOf("\"visible\"") >= 0);
+    ASSERT(res.indexOf("\"hidden\"") < 0);
+}
+
+TEST(disabled_tool_cannot_be_called) {
+    Server server("test", 80);
+    server.addTool("mytool", "A tool", "{}", [](const JsonObject&) { return String("ok"); });
+
+    server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+
+    server.disableTool("mytool");
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"mytool","arguments":{}}})");
+    ASSERT(res.indexOf("\"error\"") >= 0);
+    ASSERT(res.indexOf("Tool not found") >= 0);
+}
+
+TEST(re_enable_tool_makes_it_visible) {
+    Server server("test", 80);
+    server.addTool("toggle", "Togglable", "{}", [](const JsonObject&) { return String("ok"); });
+
+    server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test"}}})");
+
+    server.disableTool("toggle");
+    ASSERT(server.isToolEnabled("toggle") == false);
+
+    server.enableTool("toggle");
+    ASSERT(server.isToolEnabled("toggle") == true);
+
+    String res = server._processJsonRpc(
+        R"({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}})");
+    ASSERT(res.indexOf("\"toggle\"") >= 0);
+}
+
+TEST(enable_nonexistent_tool_returns_false) {
+    Server server("test", 80);
+    ASSERT(server.enableTool("nonexistent") == false);
+    ASSERT(server.disableTool("nonexistent") == false);
+}
+
+TEST(is_tool_enabled_default_true) {
+    Server server("test", 80);
+    server.addTool("mytool", "test", "{}", [](const JsonObject&) { return String("ok"); });
+    ASSERT(server.isToolEnabled("mytool") == true);
+}
+
+// ════════════════════════════════════════════════════════════════════════
 
 int main() {
     TEST_SUMMARY();

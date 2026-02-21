@@ -44,7 +44,7 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.29.1"
+#define MCPD_VERSION "0.30.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-03-26"
 
 namespace mcpd {
@@ -154,6 +154,28 @@ public:
 
     /** Enable/disable mDNS advertisement (default: enabled) */
     void setMDNS(bool enabled);
+
+    /**
+     * Set server instructions for the LLM (MCP 2025-03-26 spec).
+     * Included in the initialize response to guide the model's behavior.
+     * Example: "This device controls a greenhouse. Use temperature_read before adjusting fans."
+     */
+    void setInstructions(const char* instructions) { _instructions = instructions; }
+
+    /**
+     * Set a custom version string (overrides MCPD_VERSION in server info).
+     */
+    void setVersion(const char* version) { _version = version; }
+
+    /**
+     * Enable or disable a tool at runtime by name.
+     * Disabled tools are hidden from tools/list and cannot be called.
+     * Emits tools/list_changed notification.
+     * @return true if the tool was found
+     */
+    bool enableTool(const char* name, bool enabled = true);
+    bool disableTool(const char* name) { return enableTool(name, false); }
+    bool isToolEnabled(const char* name) const;
 
     /** Get server name */
     const char* getName() const { return _name; }
@@ -377,7 +399,10 @@ private:
     const char* _name;
     uint16_t _port;
     const char* _endpoint = "/mcp";
+    const char* _instructions = nullptr;
+    const char* _version = nullptr;
     bool _mdnsEnabled = true;
+    std::set<String> _disabledTools;  // tools hidden from listing/calling
     String _sessionId;
     bool _initialized = false;
     size_t _pageSize = 0;  // 0 = no pagination

@@ -33,7 +33,7 @@
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
 | MCP spec compliant | ✅ 2025-03-26 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 1028 tests | ❌ self-described | N/A |
+| Actually compiles | ✅ 1037 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
@@ -44,6 +44,8 @@
 | Elicitation (server requests user input) | ✅ | ❌ | ❌ |
 | Audio content type | ✅ | ❌ | ❌ |
 | Tool Annotations (readOnly, destructive hints) | ✅ | ❌ | ❌ |
+| Server Instructions (LLM guidance) | ✅ | ❌ | ❌ |
+| Runtime Tool Enable/Disable | ✅ | ❌ | ❌ |
 | Structured Content (text, image, resource) | ✅ | ❌ | ❌ |
 | Progress Notifications | ✅ | ❌ | ❌ |
 | Request Cancellation | ✅ | ❌ | ❌ |
@@ -314,6 +316,31 @@ mcp.notifyToolsChanged();  // Notify connected clients
 
 mcp.removeTool("old_sensor");
 mcp.notifyToolsChanged();
+
+// Enable/disable tools without removing them
+mcp.disableTool("maintenance_tool");   // Hidden from clients
+mcp.enableTool("maintenance_tool");    // Visible again
+```
+
+### 📋 Server Instructions
+
+Guide the LLM's behavior with your device using server instructions (MCP 2025-03-26):
+
+```cpp
+mcp.setInstructions(
+    "This device controls a greenhouse. Always read temperature "
+    "before adjusting fans. Never set irrigation above 80%."
+);
+```
+
+Instructions are sent in the `initialize` response and help the model understand the context and constraints of your hardware.
+
+### 🏷️ Custom Version
+
+Override the version string in server info (useful for firmware versioning):
+
+```cpp
+mcp.setVersion("2.1.0-greenhouse");
 ```
 
 ### 📊 Prometheus Metrics

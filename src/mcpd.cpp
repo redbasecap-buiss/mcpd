@@ -82,6 +82,27 @@ void Server::addRoot(const char* uri, const char* name) {
 void Server::setEndpoint(const char* path) { _endpoint = path; }
 void Server::setMDNS(bool enabled) { _mdnsEnabled = enabled; }
 
+bool Server::enableTool(const char* name, bool enabled) {
+    // Verify tool exists
+    bool found = false;
+    for (const auto& t : _tools) {
+        if (t.name == name) { found = true; break; }
+    }
+    if (!found) return false;
+
+    if (enabled) {
+        _disabledTools.erase(String(name));
+    } else {
+        _disabledTools.insert(String(name));
+    }
+    notifyToolsChanged();
+    return true;
+}
+
+bool Server::isToolEnabled(const char* name) const {
+    return _disabledTools.find(String(name)) == _disabledTools.end();
+}
+
 bool Server::removeTool(const char* name) {
     for (auto it = _tools.begin(); it != _tools.end(); ++it) {
         if (it->name == name) {
@@ -586,7 +607,12 @@ String Server::_handleInitialize(JsonVariant params, JsonVariant id) {
 
     JsonObject serverInfo = result["serverInfo"].to<JsonObject>();
     serverInfo["name"] = _name;
-    serverInfo["version"] = MCPD_VERSION;
+    serverInfo["version"] = _version ? _version : MCPD_VERSION;
+
+    // MCP 2025-03-26: instructions guide the LLM's behavior with this server
+    if (_instructions) {
+        result["instructions"] = _instructions;
+    }
 
     JsonObject capabilities = result["capabilities"].to<JsonObject>();
 
@@ -663,6 +689,8 @@ String Server::_handleToolsList(JsonVariant params, JsonVariant id) {
     }
 
     for (size_t i = startIdx; i < endIdx; i++) {
+        // Skip disabled tools
+        if (_disabledTools.count(_tools[i].name)) continue;
         JsonObject obj = tools.add<JsonObject>();
         _tools[i].toJson(obj);
     }
@@ -696,6 +724,14 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
     }
     if (!requestId.isEmpty()) {
         _requestTracker.trackRequest(requestId, progressToken);
+    }
+
+    // Reject disabled tools
+    if (_disabledTools.count(String(toolName))) {
+        if (!requestId.isEmpty()) {
+            _requestTracker.completeRequest(requestId);
+        }
+        return _jsonRpcError(id, -32602, "Tool not found");
     }
 
     // Find the tool

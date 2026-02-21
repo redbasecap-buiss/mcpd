@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.0] - 2026-02-21
+
+### Tests
+- Added **63 new advanced tests** (`test_advanced.cpp`):
+  - Test framework macro validation (ASSERT_TRUE/FALSE, GT/LT/GE/LE, STR_EQ, NEAR)
+  - Resource template matching: single/multiple vars, edge cases (empty var, wrong prefix, shorter URI, adjacent vars, numbers in vars, literal-only templates)
+  - MCPContent factory tests: makeText, makeImage, makeAudio, makeResource, makeResourceBlob
+  - MCPToolResult builder: text, error, chaining, image+alt, audio+desc, JSON serialization
+  - Tool annotations: spec defaults (destructive=true, openWorld=true), readOnly clears destructive, fluent API
+  - Server API surface: name/port, add/remove tool/resource/prompt/root/template, endpoint/mDNS/pageSize config, multiple tools
+  - JSON-RPC dispatch: ping, method not found, invalid JSON, initialize, tools/list, tools/call, resources/list, prompts/list, logging/setLevel, roots/list
+  - RateLimiter: disabled default, burst exact, stats, disable, config values
+  - HeapMonitor: initial state, threshold, usage percent
+  - Version/protocol format validation
+- **Total: 946 tests** (883 → 946)
+
+### Code Quality
+- **Eliminated all compiler warnings** (previously 30 warnings from mock/test code):
+  - Added `(void)param` casts for all unused parameters in `arduino_mock.h` mocks
+  - Removed unused `_port` field from `WiFiServer` mock
+  - Added explicit copy constructor for `JsonVariant` mock (fixes `-Wdeprecated-copy`)
+  - Guarded `MCPD_TEST` macro redefinition in `test_mcp_http.cpp`
+  - Removed unused `_mock_millis_offset` variable in `test_session.cpp`
+  - Fixed string literal comparison in `test_auth_platform.cpp` (`ASSERT_STR_CONTAINS` instead of `==`)
+  - Added `-Wno-unused-parameter` to test Makefile (test lambdas naturally have unused params)
+- **Expanded test framework** with 8 new assertion macros:
+  - `ASSERT_TRUE`, `ASSERT_FALSE`, `ASSERT_GT`, `ASSERT_LT`, `ASSERT_GE`, `ASSERT_LE`
+  - `ASSERT_STR_EQ` (proper C-string comparison via `strcmp`)
+  - `ASSERT_NEAR` (floating-point approximate equality)
+
 ## [0.27.5] - 2026-02-21
 
 ### Tests

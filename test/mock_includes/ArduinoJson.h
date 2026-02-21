@@ -62,6 +62,7 @@ public:
     std::shared_ptr<JsonNode> _node;
 
     JsonVariant() : _node(std::make_shared<JsonNode>()) {}
+    JsonVariant(const JsonVariant&) = default;
     JsonVariant(std::shared_ptr<JsonNode> n) : _node(n ? n : std::make_shared<JsonNode>()) {}
 
     bool isNull() const { return !_node || _node->type == JsonNodeType::Null; }

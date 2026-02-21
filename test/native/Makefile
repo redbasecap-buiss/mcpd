@@ -1,9 +1,9 @@
 CXX ?= g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -DMCPD_TEST -pthread
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -DMCPD_TEST -pthread
 INCLUDES = -I../../src -I../mock_includes -I..
 
 # Targets
-TESTS = test_jsonrpc test_tools test_mcp_http test_infrastructure test_modules test_auth_platform test_robustness test_session test_content_transport
+TESTS = test_jsonrpc test_tools test_mcp_http test_infrastructure test_modules test_auth_platform test_robustness test_session test_content_transport test_advanced
 
 .PHONY: all clean test
 
@@ -36,6 +36,9 @@ test_session: ../test_session.cpp ../arduino_mock.h ../test_framework.h ../../sr
 test_content_transport: ../test_content_transport.cpp ../arduino_mock.h ../test_framework.h ../../src/mcpd.h ../../src/mcpd.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ ../test_content_transport.cpp
 
+test_advanced: ../test_advanced.cpp ../arduino_mock.h ../test_framework.h ../../src/mcpd.h ../../src/mcpd.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ ../test_advanced.cpp
+
 test: $(TESTS)
 	@echo ""
 	@echo "══════════════════════════════════════════"
@@ -51,6 +54,7 @@ test: $(TESTS)
 	@./test_robustness
 	@./test_session
 	@./test_content_transport
+	@./test_advanced
 	@echo "All test suites completed."
 
 clean:

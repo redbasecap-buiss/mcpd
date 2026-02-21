@@ -9,7 +9,7 @@
 #include "arduino_mock.h"
 
 // Reset millis for controlled timeout testing
-static unsigned long _mock_millis_offset = 0;
+// (millis offset managed via arduino_mock.h _mockMillis())
 
 #include "../src/MCPSession.h"
 #include "../src/mcpd.h"

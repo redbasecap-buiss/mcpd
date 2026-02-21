@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <string>
 
 static int _tests_run = 0;
@@ -49,6 +50,28 @@ static int _tests_failed = 0;
         if (_h.find(needle) == std::string::npos) \
             throw "String does not contain: " #needle; \
     } while(0)
+
+#define ASSERT_TRUE(cond) ASSERT(cond)
+#define ASSERT_FALSE(cond) \
+    do { if (cond) throw "Expected false: " #cond; } while(0)
+
+#define ASSERT_GT(a, b) \
+    do { if (!((a) > (b))) throw "Expected " #a " > " #b; } while(0)
+
+#define ASSERT_LT(a, b) \
+    do { if (!((a) < (b))) throw "Expected " #a " < " #b; } while(0)
+
+#define ASSERT_GE(a, b) \
+    do { if (!((a) >= (b))) throw "Expected " #a " >= " #b; } while(0)
+
+#define ASSERT_LE(a, b) \
+    do { if (!((a) <= (b))) throw "Expected " #a " <= " #b; } while(0)
+
+#define ASSERT_STR_EQ(a, b) \
+    do { if (strcmp((a), (b)) != 0) throw "Expected string equal: " #a " == " #b; } while(0)
+
+#define ASSERT_NEAR(a, b, eps) \
+    do { if (fabs((double)(a) - (double)(b)) > (eps)) throw "Expected near: " #a " ≈ " #b; } while(0)
 
 #define ASSERT_STR_NOT_CONTAINS(haystack, needle) \
     do { \

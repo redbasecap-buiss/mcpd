@@ -19,3 +19,4 @@ test/native/test_auth_platform
 test/native/test_robustness
 test/native/test_session
 test/native/test_content_transport
+test/native/test_advanced

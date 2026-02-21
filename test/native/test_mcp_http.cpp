@@ -6,7 +6,9 @@
  */
 
 // Must define MCPD_TEST before includes
+#ifndef MCPD_TEST
 #define MCPD_TEST
+#endif
 
 // Include mocks
 #include "../arduino_mock.h"

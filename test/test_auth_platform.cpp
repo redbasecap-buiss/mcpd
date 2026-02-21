@@ -402,7 +402,7 @@ TEST(hal_system_uptime) {
 TEST(hal_platform_composite) {
     MockPlatform platform;
     // Access all subsystems through the platform interface
-    ASSERT_EQ(platform.system().platformName(), "MockMCU");
+    ASSERT_STR_CONTAINS(platform.system().platformName(), "MockMCU");
     ASSERT_EQ(platform.wifi().localIP(), "192.168.1.42");
     platform.gpio().digitalWrite(2, 1);
     ASSERT_EQ(platform.gpio().digitalRead(2), 1);

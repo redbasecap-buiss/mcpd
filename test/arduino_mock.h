@@ -189,10 +189,10 @@ inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
 }
 
 // LEDC stubs
-inline void ledcSetup(int ch, int freq, int res) {}
-inline void ledcAttachPin(int pin, int ch) {}
-inline void ledcWrite(int ch, int duty) {}
-inline void ledcDetachPin(int pin) {}
+inline void ledcSetup(int ch, int freq, int res) { (void)ch; (void)freq; (void)res; }
+inline void ledcAttachPin(int pin, int ch) { (void)pin; (void)ch; }
+inline void ledcWrite(int ch, int duty) { (void)ch; (void)duty; }
+inline void ledcDetachPin(int pin) { (void)pin; }
 
 // ── Timing ─────────────────────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ inline unsigned long pulseIn(int pin, int state, unsigned long timeout = 1000000
 
 // ── Random ─────────────────────────────────────────────────────────────
 
-inline void randomSeed(unsigned long seed) {}
+inline void randomSeed(unsigned long seed) { (void)seed; }
 inline long random(long max) { return rand() % max; }
 inline long random(long min, long max) { return min + rand() % (max - min); }
 
@@ -226,6 +226,7 @@ inline std::map<int, std::function<void()>>& _mockInterruptHandlers() {
 }
 
 inline void attachInterrupt(int pin, void (*isr)(), int mode) {
+    (void)mode;
     _mockInterruptHandlers()[pin] = isr;
 }
 
@@ -280,8 +281,8 @@ struct HardwareSerial {
     size_t _rxPos = 0;
     unsigned long _timeout = 1000;
 
-    void begin(long baud) { (void)baud; }
-    void begin(long baud, int config, int rxPin, int txPin) { (void)baud; (void)config; (void)rxPin; (void)txPin; }
+    void begin(long baud_) { (void)baud_; }
+    void begin(long baud_, int config, int rxPin, int txPin) { (void)baud_; (void)config; (void)rxPin; (void)txPin; }
     void end() {}
     void setTimeout(unsigned long t) { _timeout = t; }
     int available() { return (int)(_rxBuffer.size() - _rxPos); }
@@ -289,11 +290,11 @@ struct HardwareSerial {
         if (_rxPos < _rxBuffer.size()) return (unsigned char)_rxBuffer[_rxPos++];
         return -1;
     }
-    size_t write(uint8_t b) { (void)b; return 1; }
+    size_t write(uint8_t b_) { (void)b_; return 1; }
     size_t print(const String& s) { return s.length(); }
     size_t print(const char* s) { return strlen(s); }
     template<typename... Args>
-    void printf(const char* fmt, Args... args) { (void)fmt; }
+    void printf(const char* fmt, Args... args) { (void)fmt; ((void)args, ...); }
 
     // Test helper
     void _setRxBuffer(const std::string& data) { _rxBuffer = data; _rxPos = 0; }
@@ -305,7 +306,7 @@ inline HardwareSerial Serial2;
 // ── Serial Mock ────────────────────────────────────────────────────────
 
 struct SerialMock {
-    void begin(int baud) {}
+    void begin(int baud) { (void)baud; }
     void print(const char* s) { fprintf(stderr, "%s", s); }
     void print(const String& s) { fprintf(stderr, "%s", s.c_str()); }
     void println(const char* s = "") { fprintf(stderr, "%s\n", s); }
@@ -359,8 +360,8 @@ struct WiFiMock {
     int channel(int i) { return 1 + (i % 11); }
     int scanNetworks() { return 3; }
     void scanDelete() {}
-    int encryptionType(int i) { return 4; }
-    void begin(const char* ssid, const char* pass) {}
+    int encryptionType(int i) { (void)i; return 4; }
+    void begin(const char* ssid, const char* pass) { (void)ssid; (void)pass; }
 };
 inline WiFiMock WiFi;
 
@@ -396,12 +397,10 @@ private:
 
 class WiFiServer {
 public:
-    WiFiServer(uint16_t port) : _port(port) {}
+    WiFiServer(uint16_t port) { (void)port; }
     void begin() {}
     void stop() {}
     WiFiClient available() { return WiFiClient(); }
-private:
-    uint16_t _port;
 };
 
 // ── WebServer Mock ─────────────────────────────────────────────────────
@@ -442,7 +441,7 @@ public:
 
     WiFiClient client() { return WiFiClient(); }
 
-    void collectHeaders(const char** headers, int count) {}
+    void collectHeaders(const char** headers, int count) { (void)headers; (void)count; }
 
     String arg(const char* name) {
         if (strcmp(name, "plain") == 0) return _body;
@@ -486,9 +485,9 @@ public:
 // ── mDNS Mock ──────────────────────────────────────────────────────────
 
 struct MDNSMock {
-    bool begin(const char* name) { return true; }
-    void addService(const char* service, const char* proto, uint16_t port) {}
-    void addServiceTxt(const char* service, const char* proto, const char* key, const char* value) {}
+    bool begin(const char* name) { (void)name; return true; }
+    void addService(const char* service, const char* proto, uint16_t port) { (void)service; (void)proto; (void)port; }
+    void addServiceTxt(const char* service, const char* proto, const char* key, const char* value) { (void)service; (void)proto; (void)key; (void)value; }
 };
 inline MDNSMock MDNS;
 
@@ -497,12 +496,12 @@ inline MDNSMock MDNS;
 class TwoWire {
 public:
     void begin() {}
-    void beginTransmission(uint8_t addr) {}
+    void beginTransmission(uint8_t addr) { (void)addr; }
     uint8_t endTransmission() { return 0; }
-    uint8_t requestFrom(uint8_t addr, uint8_t count) { return count; }
+    uint8_t requestFrom(uint8_t addr, uint8_t count) { (void)addr; return count; }
     int available() { return 0; }
     int read() { return 0; }
-    void write(uint8_t b) {}
+    void write(uint8_t b) { (void)b; }
 };
 inline TwoWire Wire;
 

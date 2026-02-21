@@ -21,3 +21,4 @@ test/native/test_session
 test/native/test_content_transport
 test/native/test_advanced
 test/native/test_integration
+test/native/test_output_annotations

@@ -290,6 +290,35 @@ mcpd implements MCP specification 2025-03-26 via Streamable HTTP transport.
 | `resources/subscribe` | Subscribe to change notifications for a resource URI |
 | `resources/unsubscribe` | Unsubscribe from resource change notifications |
 
+### Tool Output Schema & Structured Content
+
+Tools can declare an `outputSchema` (JSON Schema) describing their structured output:
+
+```cpp
+MCPTool tool("get_reading", "Get sensor reading", inputSchema, handler);
+tool.setOutputSchema(R"({"type":"object","properties":{"temp":{"type":"number"}}})");
+mcp.addTool(tool);
+```
+
+When a tool with `outputSchema` returns valid JSON, the response automatically includes both `content` (text) and `structuredContent` (parsed JSON), per MCP 2025-03-26 spec.
+
+### Resource & Template Annotations
+
+Resources and resource templates support `audience` and `priority` annotations:
+
+```cpp
+MCPResource res("file://log", "Log", "System log", "text/plain", handler);
+res.setAudience("user").setPriority(0.8f);
+mcp.addResource(res);
+
+MCPResourceTemplate tmpl("sensor://{id}", "Sensor", "Desc", "text/plain", handler);
+tmpl.setAudience("assistant").setPriority(0.5f);
+mcp.addResourceTemplate(tmpl);
+```
+
+- `audience`: `"user"` or `"assistant"` — hints who the content is primarily for
+- `priority`: `0.0` to `1.0` — relative importance hint for ordering/filtering
+
 ### Session Management
 
 - Session ID sent via `Mcp-Session-Id` header

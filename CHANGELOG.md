@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.0] — 2026-02-21
+
+### Added
+- **Tool `outputSchema`**: Optional JSON Schema for structured tool output per MCP 2025-03-26 spec. Tools with `outputSchema` automatically include `structuredContent` in their response when the handler returns valid JSON.
+- **Resource annotations**: `audience` and `priority` hints on `MCPResource` for guiding client/model behavior. Builder-style API: `res.setAudience("user").setPriority(0.8f)`.
+- **Resource template annotations**: Same annotation support on `MCPResourceTemplate`.
+- **`MCPResourceAnnotations` struct**: Reusable annotations with `setAudience()`, `setPriority()`, and `toJson()`.
+- **27 new tests** covering outputSchema serialization, structuredContent generation (simple + rich handlers, arrays, error cases, non-JSON), resource/template annotation serialization, builder chains, and default state. Total: **1064 tests**.
+
+### Changed
+- `MCPTool::toJson()` now emits `outputSchema` when set.
+- `MCPResource::toJson()` and `MCPResourceTemplate::toJson()` now emit `annotations` when set.
+- Tool call dispatch (`_handleToolsCall`) auto-generates `structuredContent` from handler output for tools with `outputSchema`.
+
 ## [0.29.1] - 2026-02-21
 
 ### Features

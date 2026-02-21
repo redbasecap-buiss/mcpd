@@ -50,7 +50,8 @@ struct MCPToolAnnotations {
 struct MCPTool {
     String name;
     String description;
-    String inputSchemaJson;  // JSON Schema as string
+    String inputSchemaJson;   // JSON Schema as string
+    String outputSchemaJson;  // Optional: JSON Schema for structured output
     MCPToolHandler handler;
     MCPToolAnnotations annotations;
 
@@ -92,6 +93,12 @@ struct MCPTool {
         return *this;
     }
 
+    /** Set output schema (builder-style). Enables structured content in tool results. */
+    MCPTool& setOutputSchema(const char* schemaJson) {
+        outputSchemaJson = schemaJson;
+        return *this;
+    }
+
     /** Convenience: mark as local-only (openWorldHint=false) */
     MCPTool& markLocalOnly() {
         annotations.openWorldHint = false;
@@ -111,6 +118,13 @@ struct MCPTool {
         JsonDocument schemaDoc;
         deserializeJson(schemaDoc, inputSchemaJson);
         obj["inputSchema"] = schemaDoc.as<JsonVariant>();
+
+        // Include output schema if set
+        if (!outputSchemaJson.isEmpty()) {
+            JsonDocument outDoc;
+            deserializeJson(outDoc, outputSchemaJson);
+            obj["outputSchema"] = outDoc.as<JsonVariant>();
+        }
 
         // Include annotations if set
         if (annotations.hasAnnotations) {

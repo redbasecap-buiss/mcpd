@@ -782,6 +782,17 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
                 JsonDocument result;
                 JsonObject resultObj = result.to<JsonObject>();
                 toolResult.toJson(resultObj);
+
+                // If tool has outputSchema and first content is text, include structuredContent
+                if (!tool.outputSchemaJson.isEmpty() && !toolResult.isError &&
+                    !toolResult.content.empty() && toolResult.content[0].type == MCPContent::TEXT) {
+                    JsonDocument structured;
+                    DeserializationError err = deserializeJson(structured, toolResult.content[0].text);
+                    if (!err) {
+                        resultObj["structuredContent"] = structured.as<JsonVariant>();
+                    }
+                }
+
                 serializeJson(result, resultStr);
                 if (toolResult.isError) callIsError = true;
             } else {
@@ -802,6 +813,16 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
                 if (callIsError) {
                     result["isError"] = true;
                 }
+
+                // If tool has outputSchema, include structuredContent
+                if (!tool.outputSchemaJson.isEmpty() && !callIsError) {
+                    JsonDocument structured;
+                    DeserializationError err = deserializeJson(structured, handlerResult);
+                    if (!err) {
+                        result["structuredContent"] = structured.as<JsonVariant>();
+                    }
+                }
+
                 serializeJson(result, resultStr);
             }
 

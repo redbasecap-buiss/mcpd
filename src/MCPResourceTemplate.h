@@ -16,6 +16,8 @@
 #include <map>
 #include <vector>
 
+#include "MCPResource.h"  // For MCPResourceAnnotations
+
 namespace mcpd {
 
 /**
@@ -36,6 +38,7 @@ struct MCPResourceTemplate {
     String description;
     String mimeType;
     MCPResourceTemplateHandler handler;
+    MCPResourceAnnotations annotations;
 
     MCPResourceTemplate() = default;
 
@@ -45,6 +48,25 @@ struct MCPResourceTemplate {
         : uriTemplate(uriTemplate), name(name), description(description),
           mimeType(mimeType), handler(handler) {}
 
+    /** Builder-style: set annotations */
+    MCPResourceTemplate& annotate(const MCPResourceAnnotations& ann) {
+        annotations = ann;
+        annotations.hasAnnotations = true;
+        return *this;
+    }
+
+    /** Convenience: set audience hint */
+    MCPResourceTemplate& setAudience(const char* audience) {
+        annotations.setAudience(audience);
+        return *this;
+    }
+
+    /** Convenience: set priority hint (0.0–1.0) */
+    MCPResourceTemplate& setPriority(float priority) {
+        annotations.setPriority(priority);
+        return *this;
+    }
+
     /**
      * Serialize for resources/templates/list response.
      */
@@ -53,6 +75,10 @@ struct MCPResourceTemplate {
         obj["name"] = name;
         obj["description"] = description;
         obj["mimeType"] = mimeType;
+        if (annotations.hasAnnotations) {
+            JsonObject ann = obj["annotations"].to<JsonObject>();
+            annotations.toJson(ann);
+        }
     }
 
     /**

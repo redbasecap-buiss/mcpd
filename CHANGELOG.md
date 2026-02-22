@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.33.1] — 2026-02-22
+
+### Added
+- **`async_tasks` example**: Full Arduino sketch demonstrating the Tasks feature — async firmware update with progress tracking, interactive sensor calibration with `InputRequired` flow, and comparison with synchronous tools.
+- **Architecture documentation** (`docs/ARCHITECTURE.md`): Comprehensive technical overview of the codebase — component diagram, transport layer, feature modules, design decisions, test architecture, memory budget, and message flow.
+- **Tasks API documentation**: Updated `docs/API.md` with full Tasks reference — enabling tasks, registering async tools, task lifecycle, server-side control methods, JSON-RPC methods, and task-augmented `tools/call`.
+- **Tool call hooks documentation**: Added `onBeforeToolCall()` and `onAfterToolCall()` API reference to docs.
+- **Server instructions & icons documentation**: Added `setInstructions()` and `addIcon()` API reference to docs.
+
 ## [0.33.0] — 2026-02-22
 
 ### Added

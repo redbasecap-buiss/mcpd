@@ -397,7 +397,7 @@ mqtt.attach(mcp);
 // In loop(): mqtt.loop();
 ```
 
-For full API documentation, see [docs/API.md](docs/API.md).
+For full API documentation, see [docs/API.md](docs/API.md). For a technical overview of the codebase, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Examples
 
@@ -410,6 +410,7 @@ For full API documentation, see [docs/API.md](docs/API.md).
 | [`mqtt_bridge`](examples/mqtt_bridge/) | MQTT pub/sub bridge — AI talks to IoT | ESP32 + MQTT broker |
 | [`robot_arm`](examples/robot_arm/) | Claude controls a 4-DOF servo robot arm | ESP32 + 4× servos |
 | [`smart_greenhouse`](examples/smart_greenhouse/) | Greenhouse automation with logging & dynamic tools | ESP32 + DHT22 + relays |
+| [`async_tasks`](examples/async_tasks/) | Async tool execution with progress tracking & input flow | ESP32 only |
 
 ## Supported Platforms
 

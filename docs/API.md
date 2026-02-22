@@ -289,6 +289,10 @@ mcpd implements MCP specification 2025-03-26 via Streamable HTTP transport.
 | `completion/complete` | Get autocomplete suggestions for prompt args or resource template vars |
 | `resources/subscribe` | Subscribe to change notifications for a resource URI |
 | `resources/unsubscribe` | Unsubscribe from resource change notifications |
+| `tasks/get` | Get status of a task by ID |
+| `tasks/list` | List all tasks (with pagination) |
+| `tasks/result` | Get the result of a completed task |
+| `tasks/cancel` | Cancel a running task |
 
 ### Tool Output Schema & Structured Content
 
@@ -318,6 +322,129 @@ mcp.addResourceTemplate(tmpl);
 
 - `audience`: `"user"` or `"assistant"` — hints who the content is primarily for
 - `priority`: `0.0` to `1.0` — relative importance hint for ordering/filtering
+
+### Tasks (Async Tool Execution)
+
+*MCP 2025-11-25 experimental*
+
+Tasks allow tools to execute asynchronously. The client starts a tool call as a task, receives a task ID, and polls for status until completion.
+
+#### Enabling Tasks
+
+```cpp
+mcp.enableTasks();  // Call before begin()
+```
+
+#### Registering Async Tools
+
+```cpp
+mcp.addTaskTool(
+    "firmware_update",
+    "Start an OTA firmware update",
+    R"({"type":"object","properties":{"url":{"type":"string"}},"required":["url"]})",
+    [](const String& taskId, JsonVariant params) {
+        // Start async work...
+        // Call mcp.taskComplete(taskId, resultJson) when done
+        // Or mcp.taskFail(taskId, errorMessage) on failure
+    },
+    mcpd::TaskSupport::Required  // Forbidden | Optional | Required
+);
+```
+
+**TaskSupport levels:**
+
+| Level | Description |
+|-------|-------------|
+| `Forbidden` | Default. Tool cannot be invoked as a task. |
+| `Optional` | Tool can be called normally or as a task. |
+| `Required` | Tool *must* be invoked as a task. |
+
+#### Task Lifecycle
+
+```
+tools/call (with task field)
+    │
+    ▼
+ Working ──────► Completed (taskComplete)
+    │                 
+    ├──────► Failed (taskFail)
+    │
+    ├──────► Cancelled (taskCancel)
+    │
+    └──► InputRequired ──► Working ──► ...
+         (updateStatus)
+```
+
+#### Server-side Task Control
+
+```cpp
+// Complete with result
+mcp.taskComplete(taskId, R"({"content":[{"type":"text","text":"Done!"}]})");
+
+// Fail with error
+mcp.taskFail(taskId, "Download failed: connection timeout");
+
+// Cancel
+mcp.taskCancel(taskId);
+
+// Update status (e.g., for input-required flow)
+mcp.tasks().updateStatus(taskId, mcpd::TaskStatus::InputRequired, "Need confirmation");
+```
+
+#### JSON-RPC Methods
+
+| Method | Description |
+|--------|-------------|
+| `tasks/get` | Get status of a task by ID |
+| `tasks/list` | List all tasks (with pagination) |
+| `tasks/result` | Get the result of a completed task |
+| `tasks/cancel` | Cancel a running task |
+
+#### Task-Augmented `tools/call`
+
+Clients include a `task` field in the `tools/call` params:
+
+```json
+{
+    "method": "tools/call",
+    "params": {
+        "name": "firmware_update",
+        "arguments": {"url": "https://..."},
+        "task": {"ttl": 60000}
+    }
+}
+```
+
+The response includes a `taskId` instead of the normal tool result.
+
+### Tool Call Hooks
+
+Middleware for logging, access control, or metrics on every tool invocation:
+
+```cpp
+// Before hook — can reject the call
+mcp.onBeforeToolCall([](const char* toolName, JsonVariant params) -> bool {
+    Serial.printf("Tool called: %s\n", toolName);
+    return true;  // Return false to reject
+});
+
+// After hook — receives timing and error info
+mcp.onAfterToolCall([](const mcpd::ToolCallContext& ctx) {
+    Serial.printf("Tool %s took %lu ms, error: %s\n",
+                  ctx.toolName, ctx.durationMs, ctx.error ? "yes" : "no");
+});
+```
+
+### Server Instructions & Icons
+
+```cpp
+// Guide LLM behavior
+mcp.setInstructions("This device monitors a greenhouse. Prefer read-only operations.");
+
+// Server icons (multiple sizes/themes)
+mcp.addIcon(MCPIcon("https://example.com/icon.png", "image/png")
+    .addSize("64x64").setTheme("dark"));
+```
 
 ### Session Management
 

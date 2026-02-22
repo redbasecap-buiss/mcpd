@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.36.0] — 2026-02-22
+
+### Added
+- **Tool Result Caching** (`MCPCache.h`): Per-tool result caching with configurable TTL, bounded memory, and automatic expiration. Ideal for MCU sensor tools where hardware reads are expensive (e.g., DHT sensor needs 2s between reads, I2C scans are slow). Cache keys are computed from tool name + argument hash, so identical calls return cached results within the TTL window.
+  - `ToolResultCache`: Standalone cache with `setToolTTL()`, `get()`, `put()`, `invalidateTool()`, `invalidate()`, `clear()`, `statsJson()`.
+  - `enableCache()` / `isCacheEnabled()` on Server: opt-in caching (disabled by default).
+  - `cache()` accessor on Server for per-tool TTL configuration and stats.
+  - Bounded size with `setMaxEntries()` (default 32) — evicts expired then oldest entries.
+  - Cache-aware tool dispatch: cache hits skip handler execution entirely, cache misses store results automatically.
+  - Works with both simple and rich tool handlers.
+  - After-call hooks still fire on cache hits for consistent metrics/logging.
+  - Programmatic invalidation from within handlers (e.g., a "reset" tool invalidating a "read" tool's cache).
+- **29 new tests**: 20 ToolResultCache unit tests and 9 Server cache integration tests. **Total: 1252 tests**.
+
+### Fixed
+- Version sync: `library.properties` and `library.json` now match `MCPD_VERSION` (previously stuck at 0.31.0).
+
 ## [0.35.0] — 2026-02-22
 
 ### Added

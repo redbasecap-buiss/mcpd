@@ -873,6 +873,30 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
 
             unsigned long callStartMs = millis();
 
+            // Check cache before executing
+            if (_cache.isEnabled() && _cache.isToolCached(toolName)) {
+                String argsJson;
+                { JsonDocument _tmp; _tmp.to<JsonObject>(); for (auto kv : arguments) { _tmp[kv.key()] = kv.value(); } serializeJson(_tmp, argsJson); }
+                String cachedResult;
+                bool cachedIsError;
+                if (_cache.get(toolName, argsJson, cachedResult, cachedIsError)) {
+                    // Cache hit — skip handler execution
+                    if (_afterToolCallHook) {
+                        ToolCallContext ctx;
+                        ctx.toolName = toolName;
+                        ctx.args = &arguments;
+                        ctx.startMs = callStartMs;
+                        ctx.durationMs = 0;
+                        ctx.isError = cachedIsError;
+                        _afterToolCallHook(ctx);
+                    }
+                    if (!requestId.isEmpty()) {
+                        _requestTracker.completeRequest(requestId);
+                    }
+                    return _jsonRpcResult(id, cachedResult);
+                }
+            }
+
             // Check if this tool has a rich handler
             MCPRichToolHandler richHandler = nullptr;
             for (const auto& rh : _richTools) {
@@ -982,6 +1006,13 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
                 }
 
                 serializeJson(result, resultStr);
+            }
+
+            // Store in cache if configured
+            if (_cache.isEnabled() && _cache.isToolCached(toolName)) {
+                String argsJson;
+                { JsonDocument _tmp; _tmp.to<JsonObject>(); for (auto kv : arguments) { _tmp[kv.key()] = kv.value(); } serializeJson(_tmp, argsJson); }
+                _cache.put(toolName, argsJson, resultStr, callIsError);
             }
 
             // After-call hook: logging/metrics

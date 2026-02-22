@@ -513,3 +513,42 @@ If a tool's JSON output violates its declared `outputSchema` (wrong types, missi
 This catches handler bugs during development before invalid data reaches the client. Non-JSON output from tools with `outputSchema` gracefully skips validation (no `structuredContent` is generated).
 
 Disabled by default. Enable with `mcp.enableOutputValidation()`.
+
+### Tool Result Caching
+
+Cache tool results with per-tool TTL to avoid expensive hardware reads:
+
+```cpp
+// Configure TTL per tool (only explicitly configured tools are cached)
+mcp.cache().setToolTTL("temperature_read", 2000);  // Cache for 2 seconds
+mcp.cache().setToolTTL("i2c_scan", 10000);          // Cache for 10 seconds
+mcp.cache().setMaxEntries(32);                      // Limit memory (default: 32)
+mcp.enableCache();                                  // Activate caching
+```
+
+Cache keys are computed from tool name + serialized arguments, so `temperature_read({"unit":"C"})` and `temperature_read({"unit":"F"})` are cached independently.
+
+**Programmatic invalidation** (e.g., a "calibrate" tool invalidating a "read" tool):
+
+```cpp
+mcp.addTool("sensor_calibrate", "Calibrate", schema,
+    [&](const JsonObject& args) -> String {
+        // ... calibration logic ...
+        mcp.cache().invalidateTool("sensor_read");  // Clear stale readings
+        return "Calibrated";
+    });
+```
+
+**Cache statistics** for diagnostics:
+
+```cpp
+String stats = mcp.cache().statsJson();
+// {"enabled":true,"entries":5,"maxEntries":32,"hits":42,"misses":12,"hitRate":0.78,"toolCount":3}
+```
+
+**Key behaviors:**
+- Disabled by default (opt-in with `enableCache()`)
+- Only tools with explicit TTL are cached (write/actuator tools are never cached unless configured)
+- Expired entries are evicted automatically; bounded size prevents memory exhaustion
+- After-call hooks still fire on cache hits for consistent metrics
+- Error results are also cached (prevents hammering a failing sensor)

@@ -42,12 +42,13 @@
 #include "MCPMetrics.h"
 #include "MCPTask.h"
 #include "MCPValidation.h"
+#include "MCPCache.h"
 
 #ifdef ESP32
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.35.0"
+#define MCPD_VERSION "0.36.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-11-25"
 #define MCPD_MCP_PROTOCOL_VERSION_COMPAT "2025-03-26"
 
@@ -400,6 +401,23 @@ public:
     /** Check if output validation is enabled */
     bool isOutputValidationEnabled() const { return _outputValidation; }
 
+    // ── Tool Result Caching ─────────────────────────────────────────────
+
+    /**
+     * Access the tool result cache for configuration.
+     * Use to set per-tool TTLs before enabling.
+     */
+    ToolResultCache& cache() { return _cache; }
+
+    /**
+     * Enable tool result caching. Only tools with explicit TTL are cached.
+     * @see ToolResultCache::setToolTTL
+     */
+    void enableCache(bool enable = true) { _cache.setEnabled(enable); }
+
+    /** Check if caching is enabled */
+    bool isCacheEnabled() const { return _cache.isEnabled(); }
+
     // ── JSON-RPC Error Data ────────────────────────────────────────────
 
     /**
@@ -518,6 +536,7 @@ private:
     TaskManager _taskManager;
     bool _inputValidation = false;
     bool _outputValidation = false;
+    ToolResultCache _cache;
     std::map<String, MCPTaskToolHandler> _taskToolHandlers;
     std::map<String, TaskSupport> _taskToolSupport;
 

@@ -28,6 +28,7 @@
 #include "MCPLogging.h"
 #include "MCPCompletion.h"
 #include "MCPRoots.h"
+#include "MCPToolGroup.h"
 #include "MCPContent.h"
 #include "MCPProgress.h"
 #include "MCPTransport.h"
@@ -49,7 +50,7 @@
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.38.0"
+#define MCPD_VERSION "0.39.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-11-25"
 #define MCPD_MCP_PROTOCOL_VERSION_COMPAT "2025-03-26"
 
@@ -198,6 +199,36 @@ public:
     bool enableTool(const char* name, bool enabled = true);
     bool disableTool(const char* name) { return enableTool(name, false); }
     bool isToolEnabled(const char* name) const;
+
+    // ── Tool Groups ────────────────────────────────────────────────────
+
+    /** Access the tool group manager */
+    ToolGroupManager& toolGroups() { return _toolGroups; }
+    const ToolGroupManager& toolGroups() const { return _toolGroups; }
+
+    /**
+     * Create a tool group and optionally assign tools.
+     * Convenience wrapper around toolGroups().createGroup().
+     */
+    bool createToolGroup(const char* name, const char* description = "") {
+        return _toolGroups.createGroup(name, description);
+    }
+
+    /**
+     * Add a tool to a group (creates the group if needed).
+     */
+    bool addToolToGroup(const char* toolName, const char* groupName) {
+        return _toolGroups.addToolToGroup(toolName, groupName);
+    }
+
+    /**
+     * Enable or disable a tool group. Disabled groups hide their tools
+     * from tools/list and prevent calls (unless the tool belongs to
+     * another enabled group). Emits tools/list_changed notification.
+     * @return true if group exists
+     */
+    bool enableToolGroup(const char* name, bool enabled = true);
+    bool disableToolGroup(const char* name) { return enableToolGroup(name, false); }
 
     /** Get server name */
     const char* getName() const { return _name; }
@@ -538,6 +569,7 @@ private:
     bool _inputValidation = false;
     bool _outputValidation = false;
     ToolResultCache _cache;
+    ToolGroupManager _toolGroups;
     std::map<String, MCPTaskToolHandler> _taskToolHandlers;
     std::map<String, TaskSupport> _taskToolSupport;
 

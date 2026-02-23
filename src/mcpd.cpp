@@ -100,7 +100,15 @@ bool Server::enableTool(const char* name, bool enabled) {
 }
 
 bool Server::isToolEnabled(const char* name) const {
-    return _disabledTools.find(String(name)) == _disabledTools.end();
+    if (_disabledTools.find(String(name)) != _disabledTools.end()) return false;
+    if (_toolGroups.isToolGroupDisabled(name)) return false;
+    return true;
+}
+
+bool Server::enableToolGroup(const char* name, bool enabled) {
+    if (!_toolGroups.enableGroup(name, enabled)) return false;
+    notifyToolsChanged();
+    return true;
 }
 
 bool Server::removeTool(const char* name) {
@@ -714,8 +722,8 @@ String Server::_handleToolsList(JsonVariant params, JsonVariant id) {
     }
 
     for (size_t i = startIdx; i < endIdx; i++) {
-        // Skip disabled tools
-        if (_disabledTools.count(_tools[i].name)) continue;
+        // Skip disabled tools (individually or by group)
+        if (!isToolEnabled(_tools[i].name.c_str())) continue;
         JsonObject obj = tools.add<JsonObject>();
         _tools[i].toJson(obj);
 
@@ -765,8 +773,8 @@ String Server::_handleToolsCall(JsonVariant params, JsonVariant id) {
         return _jsonRpcError(id, -32601, "Tasks not supported");
     }
 
-    // Reject disabled tools
-    if (_disabledTools.count(String(toolName))) {
+    // Reject disabled tools (individually or by group)
+    if (!isToolEnabled(toolName)) {
         if (!requestId.isEmpty()) {
             _requestTracker.completeRequest(requestId);
         }

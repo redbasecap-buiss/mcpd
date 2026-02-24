@@ -33,7 +33,7 @@
 |---|:---:|:---:|:---:|
 | Runs on the MCU | ✅ | ✅ | ❌ CLI tool |
 | MCP spec compliant | ✅ 2025-11-25 | ❌ custom WS | ❌ |
-| Actually compiles | ✅ 1660 tests | ❌ self-described | N/A |
+| Actually compiles | ✅ 1699 tests | ❌ self-described | N/A |
 | Streamable HTTP + SSE | ✅ | ❌ | ❌ |
 | WebSocket transport | ✅ | ✅ | ❌ |
 | Claude Desktop bridge | ✅ | ❌ | ❌ |
@@ -56,6 +56,7 @@
 | Role-Based Access Control (RBAC) | ✅ | ❌ | ❌ |
 | OTA Updates | ✅ | ❌ | ❌ |
 | Prometheus Metrics | ✅ | ❌ | ❌ |
+| Health Checks (component-level) | ✅ | ❌ | ❌ |
 | Captive Portal + Setup CLI | ✅ | ❌ | ❌ |
 | Hardware Abstraction Layer | ✅ | ❌ | ❌ |
 | Resource Subscriptions | ✅ | ❌ | ❌ |

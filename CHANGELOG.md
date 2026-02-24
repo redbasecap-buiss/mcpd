@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.46.0] — 2026-02-24
+
+### Added
+- **Health Checks** (`MCPHealthCheck.h`): Structured component-level health monitoring for MCU servers. Register named health checks (WiFi, heap, sensors, transports) with custom check functions. Query overall health or per-component status.
+  - `HealthCheck`: Register, remove, enable/disable checks. Bounded check count (default 16).
+  - `HealthStatus`: Three levels — `Healthy`, `Degraded`, `Unhealthy`. Static factory methods for clean construction.
+  - `addCheck()`: Register named check with function and critical flag. Non-critical checks don't affect overall health.
+  - `removeCheck()`, `setCheckEnabled()`: Manage individual checks without full reset.
+  - `run()`: Execute all enabled checks, compute overall health with proper precedence (unhealthy > degraded > healthy).
+  - **Result caching**: Configurable cache duration (default 5s) to avoid re-running checks on rapid queries. `invalidate()` to force refresh.
+  - **Change listeners**: `onChange()` callback when overall health level transitions. Listener removal by ID.
+  - **Latency tracking**: Each check result includes execution time in milliseconds.
+  - `toJSON()`: Full health report with per-check status, message, latency, critical/enabled flags, uptime.
+  - `statsJSON()`: Lightweight summary for monitoring dashboards.
+  - Server integration: `server.healthCheck()` accessor.
+- **39 new tests**: Full coverage of registration, running, non-critical checks, caching, invalidation, listeners, reset, JSON serialization, server integration, edge cases. **Total: 1699 tests**.
+
+### Fixed
+- Version sync: library.json now matches MCPD_VERSION.
+
 ## [0.42.0] — 2026-02-24
 
 ### Added

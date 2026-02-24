@@ -50,12 +50,13 @@
 #include "MCPAccessControl.h"
 #include "MCPAuditLog.h"
 #include "MCPWatchdog.h"
+#include "MCPHealthCheck.h"
 
 #ifdef ESP32
 #include "MCPTransportBLE.h"
 #endif
 
-#define MCPD_VERSION "0.45.0"
+#define MCPD_VERSION "0.46.0"
 #define MCPD_MCP_PROTOCOL_VERSION "2025-11-25"
 #define MCPD_MCP_PROTOCOL_VERSION_COMPAT "2025-03-26"
 
@@ -320,6 +321,7 @@ public:
     // ── Access Control (RBAC) ──────────────────────────────────────────
     /** Access the RBAC controller for role-based tool restrictions. */
     AccessControl& accessControl() { return _accessControl; }
+    HealthCheck& healthCheck() { return _healthCheck; }
 
     /**
      * Access the audit log for configuration and queries.
@@ -576,6 +578,7 @@ private:
 
     RateLimiter _rateLimiter;
     AccessControl _accessControl;
+    HealthCheck _healthCheck;
     AuditLog _auditLog;
     SessionManager _sessionManager;
     HeapMonitor _heapMonitor;

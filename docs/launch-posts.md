@@ -32,7 +32,7 @@ Then in Claude: "What's the temperature?" → Claude calls your tool → gets re
 
 35 native tests, runs on all ESP32 variants (S2, S3, C3). RP2040 HAL is ready too.
 
-🔗 GitHub: https://github.com/redbasecap-buiss/mcpd
+🔗 GitHub: https://github.com/quantumnic/mcpd
 📄 MIT Licensed
 
 Would love feedback! What hardware would you want to expose to AI first?
@@ -61,7 +61,7 @@ Install via PlatformIO: `lib_deps = mcpd` or download ZIP for Arduino IDE.
 
 Currently supports ESP32 family, RP2040 HAL is implemented and coming next.
 
-GitHub: https://github.com/redbasecap-buiss/mcpd | MIT License
+GitHub: https://github.com/quantumnic/mcpd | MIT License
 
 ---
 
@@ -84,7 +84,7 @@ It's complementary to HA, not a replacement. Think of it as giving your AI assis
 - Auth support (API key / Bearer token)
 - Prometheus `/metrics` endpoint
 
-GitHub: https://github.com/redbasecap-buiss/mcpd | MIT License
+GitHub: https://github.com/quantumnic/mcpd | MIT License
 
 ---
 
@@ -100,7 +100,7 @@ Features: Streamable HTTP/SSE/WebSocket transports, API key auth, OTA updates, P
 
 35 tests. MIT licensed. Single dependency (ArduinoJson).
 
-https://github.com/redbasecap-buiss/mcpd
+https://github.com/quantumnic/mcpd
 
 ---
 
@@ -112,7 +112,7 @@ https://github.com/redbasecap-buiss/mcpd
 
 Your microcontroller becomes a tool that Claude, Cursor, or any MCP client can discover and use. No cloud. No custom API.
 
-🔗 https://github.com/redbasecap-buiss/mcpd
+🔗 https://github.com/quantumnic/mcpd
 
 2/ How it works:
 
@@ -150,4 +150,4 @@ Now Claude can ask: "What's the temperature?" and get real data.
 
 MIT licensed. One dependency. Works today.
 
-Try it: https://github.com/redbasecap-buiss/mcpd ⭐
+Try it: https://github.com/quantumnic/mcpd ⭐

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.49.0] — 2026-03-01
+
+### Added
+- **MCPRetry** (`MCPRetry.h`): Configurable retry policies with exponential backoff for unreliable hardware/network calls.
+  - Jitter modes (none, full, decorrelated), per-key registry with LRU eviction, callbacks, JSON serialization
+  - 55 new tests (unit + integration)
+
+### Changed
+- Total test count: 1827
+
+### Fixed
+- Updated all repository URLs from old org to `quantumnic/mcpd`
+
 ## [0.48.0] — 2026-02-25
 
 ### Added

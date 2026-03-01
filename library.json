@@ -20,17 +20,17 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/redbasecap-buiss/mcpd.git"
+    "url": "https://github.com/quantumnic/mcpd.git"
   },
   "authors": [
     {
       "name": "Nicola Spieser",
-      "url": "https://github.com/redbasecap-buiss",
+      "url": "https://github.com/quantumnic",
       "maintainer": true
     }
   ],
   "license": "MIT",
-  "homepage": "https://github.com/redbasecap-buiss/mcpd",
+  "homepage": "https://github.com/quantumnic/mcpd",
   "frameworks": ["arduino"],
   "platforms": ["espressif32", "raspberrypi", "ststm32"],
   "dependencies": {

@@ -114,7 +114,7 @@ mcpd::tools::GPIOTool::attach(mcp);
 mcpd has 35 native tests that run on macOS/Linux — no ESP32 needed:
 
 ```bash
-git clone https://github.com/redbasecap-buiss/mcpd
+git clone https://github.com/quantumnic/mcpd
 cd mcpd && make test
 ```
 
@@ -148,9 +148,9 @@ The robot arm example is my favorite. Ask Claude to "pick up the object at posit
 pio pkg install --library "mcpd"
 
 # Or clone
-git clone https://github.com/redbasecap-buiss/mcpd
+git clone https://github.com/quantumnic/mcpd
 ```
 
-MIT licensed. One dependency (ArduinoJson). Star it if you find it useful: **[github.com/redbasecap-buiss/mcpd](https://github.com/redbasecap-buiss/mcpd)**
+MIT licensed. One dependency (ArduinoJson). Star it if you find it useful: **[github.com/quantumnic/mcpd](https://github.com/quantumnic/mcpd)**
 
 I'd love to hear what hardware you'd expose to AI first. Drop a comment or open a discussion on GitHub!

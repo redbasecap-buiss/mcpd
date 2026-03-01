@@ -12,7 +12,7 @@
 If you discover a security vulnerability in mcpd, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue
-2. Email: **redbasecap-buiss@users.noreply.github.com**
+2. Email: **quantumnic@users.noreply.github.com**
 3. Include: description, reproduction steps, affected versions, potential impact
 
 We aim to respond within 48 hours and release a fix within 7 days for critical issues.

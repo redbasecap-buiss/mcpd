@@ -12,7 +12,7 @@
 
 **Expose ESP32/RP2040 hardware as AI-accessible tools via [Model Context Protocol](https://modelcontextprotocol.io)**
 
-[![Native Tests](https://github.com/redbasecap-buiss/mcpd/actions/workflows/test.yml/badge.svg)](https://github.com/redbasecap-buiss/mcpd/actions/workflows/test.yml)
+[![Native Tests](https://github.com/quantumnic/mcpd/actions/workflows/test.yml/badge.svg)](https://github.com/quantumnic/mcpd/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-compatible-orange.svg)](https://platformio.org)
 [![Arduino](https://img.shields.io/badge/Arduino-compatible-teal.svg)](https://www.arduino.cc)
@@ -455,9 +455,7 @@ Test on macOS/Linux **without any hardware**:
 make test
 ```
 
-- **222 JSON-RPC tests** — Protocol parsing, dispatch, error handling, batch requests, prompts, logging, pagination
-- **202 tool tests** — All built-in tools: GPIO, PWM, Servo, NeoPixel, DHT, I2C, SPI, ADC, UART, CAN, Modbus, LoRa, camera, ESP-NOW, and more
-- **38 HTTP integration tests** — Real HTTP requests against a POSIX socket MCP server: full lifecycle, CORS, prompts, completion, subscriptions, concurrency
+- **1827 tests across 29 test suites** — JSON-RPC, tools, HTTP, infrastructure, modules, auth, sessions, transports, tasks, validation, caching, scheduling, pipelines, tool groups, event store, state store, RBAC, audit log, alerts, watchdog, health checks, rate limiting, circuit breaker, retry policies
 
 ## Roadmap
 
@@ -481,11 +479,24 @@ make test
 - [x] Rate limiting
 - [x] Connection lifecycle hooks
 - [x] Watchdog tool
+- [x] Circuit breaker pattern
+- [x] Retry policies with exponential backoff
+- [x] Health check monitoring
+- [x] Event store (ring-buffer)
+- [x] State store with transactions
+- [x] Audit logging
+- [x] Alert engine with hysteresis
+- [x] Tool pipelines (atomic sequences)
+- [x] Tool groups (bulk enable/disable)
+- [x] Tool caching with TTL
+- [x] Input/output validation
+- [x] Async tasks (MCP 2025-11-25)
+- [x] Role-based access control (RBAC)
 - [ ] mTLS authentication
 
 ## Testing
 
-For host-side testing without hardware, see [**esp32emu**](https://github.com/redbasecap-buiss/esp32emu) — a lightweight ESP32/Arduino emulator with real network sockets.
+For host-side testing without hardware, see [**esp32emu**](https://github.com/quantumnic/esp32emu) — a lightweight ESP32/Arduino emulator with real network sockets.
 
 ## License
 
